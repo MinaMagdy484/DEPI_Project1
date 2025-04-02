@@ -1,0 +1,158 @@
+﻿@model IEnumerable<Word>
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h1>Index</h1>
+
+<p>
+    <a asp-action="Create">Create New</a>
+</p>
+
+
+
+<form class="col-6" method="get">
+    <div class="input-group mt-3">
+        <!-- Search Input -->
+        <input name="search" value="@ViewBag.SearchText" class="form-control" />
+
+        <!-- Dropdown for search type -->
+        <select name="searchType" class="form-select mx-2">
+            @if (ViewBag.SearchType == "exact")
+            {
+                <option value="exact" selected>Exact Word</option>
+            }
+            else
+            {
+                <option value="exact">Exact Word</option>
+            }
+
+            @if (ViewBag.SearchType == "contain")
+            {
+                <option value="contain" selected>Contains</option>
+            }
+            else
+            {
+                <option value="contain">Contains</option>
+            }
+
+            @if (ViewBag.SearchType == "start")
+            {
+                <option value="start" selected>Starts With</option>
+            }
+            else
+            {
+                <option value="start">Starts With</option>
+            }
+
+            @if (ViewBag.SearchType == "end")
+            {
+                <option value="end" selected>Ends With</option>
+            }
+            else
+            {
+                <option value="end">Ends With</option>
+            }
+        </select>
+
+
+        <button type="submit" class="btn btn-secondary">Search</button>
+    </div>
+</form>
+
+
+
+
+
+
+@* <form class="col-3">
+    <div method="get" class="mt-3 input-group">
+        <input name="search" value="@ViewBag.SearchText" asp-controller="Professors" asp-action="Index" class="form-control" />
+        <button type="submit" class="input-group-append btn btn-secondary"><i class="bi bi-search"></i></button>
+    </div>
+</form> *@
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.WordId)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Word_text)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Language)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Class)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.notes)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.IPA)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Pronunciation)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.IsDrevWord)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Root)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.GroupWord)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.WordId)
+                </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Word_text)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Language)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Class)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.notes)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.IPA)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Pronunciation)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.IsDrevWord)
+            </td>
+            <td>
+    @if (item.RootID != null && item.Root != null)
+    {
+        @Html.DisplayFor(modelItem => item.Root.Word_text)
+        @("(" + item.Root.Class + ")")
+    }
+        </td>
+
+                
+
+
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.WordId">Edit</a> |
+                <a asp-action="Details" asp-route-id="@item.WordId">Details</a> |
+                <a asp-action="Delete" asp-route-id="@item.WordId">Delete</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>

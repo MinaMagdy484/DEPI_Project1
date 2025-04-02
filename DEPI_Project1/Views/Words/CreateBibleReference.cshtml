@@ -1,0 +1,40 @@
+﻿@{
+    ViewBag.Title = "Create Bible Reference";
+}
+
+<form asp-action="CreateBibleReference" method="post">
+    <input type="hidden" name="wordMeaningId" value="@ViewBag.WordMeaningId" />
+
+    <div class="form-group">
+        <label for="book">Book</label>
+        <input type="text" name="book" class="form-control" required />
+    </div>
+
+    <div class="form-group">
+        <label for="chapter">Chapter</label>
+        <input type="number" name="chapter" class="form-control" required />
+    </div>
+
+    <div class="form-group">
+        <label for="verse">Verse</label>
+        <input type="number" name="verse" class="form-control" required />
+    </div>
+
+    <div class="form-group">
+        <label for="language">Language</label>
+        <input type="text" name="language" class="form-control" required />
+    </div>
+    <div class="form-group">
+        <label for="Edition">Edition</label>
+        <input type="text" name="Edition" class="form-control" required />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Search and Add Bible Verse</button>
+</form>
+
+@if (ViewBag.ErrorMessage != null)
+{
+    <div class="alert alert-danger">
+        @ViewBag.ErrorMessage
+    </div>
+}

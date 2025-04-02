@@ -1,0 +1,154 @@
+﻿@model Word
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+<h1>Create</h1>
+
+<h4>Word</h4>
+<hr />
+<div class="row">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="col-md-4">
+        <!-- Separate search form (GET) -->
+@*         <form method="get" asp-action="Create">
+            <div class="form-group">
+                <label for="RootSearch" class="control-label">Search for Root</label>
+                <input type="text" name="RootSearch" id="RootSearch" class="form-control" placeholder="Search for Root..." value="@ViewData["RootSearch"]" />
+                <button type="submit" class="btn btn-primary mt-2">Search</button>
+            </div>
+        </form> *@
+        <form method="get" asp-action="Create">
+            <div class="form-group">
+                <label for="RootSearch" class="control-label">Search for Root</label>
+                <input type="text" name="RootSearch" id="RootSearch" class="form-control" placeholder="Search for Root..." value="@ViewData["RootSearch"]" />
+            </div>
+
+            <!-- Add Group Search -->
+            <div class="form-group">
+                <label for="GroupSearch" class="control-label">Search for Group</label>
+                <input type="text" name="GroupSearch" id="GroupSearch" class="form-control" placeholder="Search for Group..." value="@ViewData["GroupSearch"]" />
+            </div>
+
+            <button type="submit" class="btn btn-primary mt-2">Search</button>
+        </form>
+
+        <!-- Main form for submitting the word -->
+        <form method="post" asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="form-group">
+                <label asp-for="Word_text" class="control-label"></label>
+                <input asp-for="Word_text" class="form-control" />
+                <span asp-validation-for="Word_text" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Language"></label>
+                <select asp-for="Language" class="form-control">
+                    @foreach (var item in ViewBag.Languages as SelectList)
+                    {
+                        <option value="@item.Value">@item.Text</option>
+                    }
+                </select>
+            </div>
+
+            @* <div class="form-group">
+                <label asp-for="Class" class="control-label"></label>
+                <input asp-for="Class" class="form-control" />
+                <span asp-validation-for="Class" class="text-danger"></span>
+            </div> *@
+
+            <div class="form-group">
+                <label asp-for="Class"></label>
+                <select asp-for="Class" class="form-control">
+                    @foreach (var item in ViewBag.Class as SelectList)
+                    {
+                        <option value="@item.Value">@item.Text</option>
+                    }
+                </select>
+            </div>
+
+@* 
+            <div class="form-group">
+                <label asp-for="GroupID" class="control-label">Group</label>
+                <select asp-for="GroupID" class="form-control" asp-items="ViewBag.GroupID"></select>
+                <span asp-validation-for="GroupID" class="text-danger"></span>
+            </div> *@
+            <div class="form-group">
+                <label asp-for="GroupID" class="control-label">Group</label>
+                <select asp-for="GroupID" class="form-control" id="GroupIDDropdown">
+                    <option value="">-- Select a Group --</option>
+                    @foreach (var group in (IEnumerable<SelectListItem>)ViewData["GroupID"])
+                    {
+                        if (Model.GroupID.HasValue && Model.GroupID.Value == int.Parse(group.Value))
+                        {
+                            <option value="@group.Value" selected="selected">@group.Text</option>
+                        }
+                        else
+                        {
+                            <option value="@group.Value">@group.Text</option>
+                        }
+                    }
+                </select>
+                <span asp-validation-for="GroupID" class="text-danger"></span>
+            </div>
+            <!-- Root dropdown -->
+            <div class="form-group">
+                <label asp-for="RootID" class="control-label">Root</label>
+                <select asp-for="RootID" class="form-control" id="RootIDDropdown">
+                    <option value="">-- Select a Root --</option>
+                    @foreach (var root in (IEnumerable<SelectListItem>)ViewData["RootID"])
+                    {
+                        if (Model.RootID.HasValue && Model.RootID.Value == int.Parse(root.Value))
+                        {
+                            <option value="@root.Value" selected="selected">@root.Text</option>
+                        }
+                        else
+                        {
+                            <option value="@root.Value">@root.Text</option>
+                        }
+                    }
+                </select>
+                <span asp-validation-for="RootID" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="notes" class="control-label"></label>
+                <input asp-for="notes" class="form-control" />
+                <span asp-validation-for="notes" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="IPA" class="control-label"></label>
+                <input asp-for="IPA" class="form-control" />
+                <span asp-validation-for="IPA" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Pronunciation" class="control-label"></label>
+                <input asp-for="Pronunciation" class="form-control" />
+                <span asp-validation-for="Pronunciation" class="text-danger"></span>
+            </div>
+            <div class="form-group form-check">
+                <label class="form-check-label">
+                    <input class="form-check-input" asp-for="IsDrevWord" /> @Html.DisplayNameFor(model => model.IsDrevWord)
+                </label>
+            </div>
+
+            <div class="form-group">
+                <input type="submit" value="Create" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

@@ -1,0 +1,112 @@
+﻿@model IEnumerable<GroupWord>
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h1>Index</h1>
+
+<p>
+    <a asp-action="Create">Create New</a>
+</p>
+
+
+<form class="col-6" method="get">
+    <div class="input-group mt-3">
+        <!-- Search Input -->
+        <input name="search" value="@ViewBag.SearchText" class="form-control" />
+
+        <!-- Dropdown for search type -->
+        <select name="searchType" class="form-select mx-2">
+            @if (ViewBag.SearchType == "exact")
+            {
+                <option value="exact" selected>Exact Word</option>
+            }
+            else
+            {
+                <option value="exact">Exact Word</option>
+            }
+
+            @if (ViewBag.SearchType == "contain")
+            {
+                <option value="contain" selected>Contains</option>
+            }
+            else
+            {
+                <option value="contain">Contains</option>
+            }
+
+            @if (ViewBag.SearchType == "start")
+            {
+                <option value="start" selected>Starts With</option>
+            }
+            else
+            {
+                <option value="start">Starts With</option>
+            }
+
+            @if (ViewBag.SearchType == "end")
+            {
+                <option value="end" selected>Ends With</option>
+            }
+            else
+            {
+                <option value="end">Ends With</option>
+            }
+        </select>
+
+
+        <button type="submit" class="btn btn-secondary">Search</button>
+    </div>
+</form>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.Name)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.OriginLanguage)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.EtymologyWord)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Etymology)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Notes)
+            </th>
+
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.Name)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.OriginLanguage)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.EtymologyWord)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Etymology)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Notes)
+            </td>
+
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.ID">Edit</a> |
+                <a asp-action="Details" asp-route-id="@item.ID">Details</a> |
+                <a asp-action="Delete" asp-route-id="@item.ID">Delete</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>
