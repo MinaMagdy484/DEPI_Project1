@@ -12,7 +12,7 @@ public class ApplicationDbContext :IdentityDbContext<ApplicationUser>
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         // optionsBuilder.UseSqlServer("Server=localhost;Database=DEPI_Project2;Trusted_Connection = True;TrustServerCertificate=True;");
-        optionsBuilder.UseSqlServer("Server=localhost;Database=Coptic(with login);Trusted_Connection = True;TrustServerCertificate=True;",
+        optionsBuilder.UseSqlServer("Server=10.0.0.4,1433;Database=coptic_dictionary1;User Id=AppUser;Password=Coptic123;TrustServerCertificate=True;",
             options => options.CommandTimeout(120));
 
         base.OnConfiguring(optionsBuilder);

@@ -75,14 +75,53 @@
                     Add Defintion to All Words in this Group
                 </a>
 
-                <ul>
-                    @foreach (var groupWord in Model.GroupWord.Words.OrderBy(w => w.Language).ThenBy(w => w.Word_text))
-                    {
-                        @* <li>@groupWord.Word_text (@groupWord.Language, @groupWord.Class)</li>*@
-                        <h5> <a asp-controller="Words" asp-action="Details" asp-route-id="@groupWord.WordId">@groupWord.Word_text (@groupWord.Language, @groupWord.Class) </a> </h5>
-
-                    }
-                </ul>
+                @if (ViewBag.GroupedWords != null && ViewBag.UniqueClasses != null)
+                {
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Language</th>
+                                    @foreach (var wordClass in ViewBag.UniqueClasses)
+                                    {
+                                        <th>@wordClass</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var languageGroup in ViewBag.GroupedWords)
+                                {
+                                    <tr>
+                                        <td><strong>@languageGroup.Key</strong></td>
+                                        @foreach (var wordClass in ViewBag.UniqueClasses)
+                                        {
+                                            <td>
+                                                @{
+                                                    if (languageGroup.Value != null && 
+                                                        languageGroup.Value.ContainsKey(wordClass) && 
+                                                        languageGroup.Value[wordClass]?.Count > 0)
+                                                        {
+                                                            @foreach (var word in languageGroup.Value[wordClass])
+                                                            {
+                                                                <div>
+                                                                    <a asp-controller="Words" 
+                                                                       asp-action="Details" 
+                                                                       asp-route-id="@word.WordId"
+                                                                       class="text-decoration-none">
+                                                                        @word.Word_text
+                                                                    </a>
+                                                                </div>
+                                                            }
+                                                        }
+                                                }
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
             </dd>
 
 

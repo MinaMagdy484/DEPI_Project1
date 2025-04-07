@@ -464,6 +464,31 @@ namespace CopticDictionarynew1.Controllers
                 }
             }
 
+
+            if (word?.GroupWord?.Words != null)
+            {
+                // Group words by language and class
+                var groupedWords = word.GroupWord.Words
+                    .GroupBy(w => w.Language)
+                    .OrderBy(g => g.Key)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.GroupBy(w => w.Class)
+                              .OrderBy(c => c.Key)
+                              .ToDictionary(c => c.Key, c => c.ToList())
+                    );
+
+                // Get unique classes across all words
+                var uniqueClasses = word.GroupWord.Words
+                    .Select(w => w.Class)
+                    .Distinct()
+                    .OrderBy(c => c)
+                    .ToList();
+
+                ViewBag.GroupedWords = groupedWords;
+                ViewBag.UniqueClasses = uniqueClasses;
+            }
+
             return View(word);
         }
 
