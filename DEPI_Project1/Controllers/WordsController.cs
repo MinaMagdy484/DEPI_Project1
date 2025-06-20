@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using CopticDictionarynew1.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -17,12 +18,14 @@ namespace CopticDictionarynew1.Controllers
     {
         private readonly ILogger<WordsController> _logger;
         private readonly ApplicationDbContext _context;
+        private readonly IGoogleDriveService _googleDriveService;
 
         // Inject the logger and DbContext into the constructor
-        public WordsController(ILogger<WordsController> logger, ApplicationDbContext context)
+        public WordsController(ILogger<WordsController> logger, ApplicationDbContext context, IGoogleDriveService googleDriveService)
         {
             _logger = logger;
             _context = context;
+            _googleDriveService = googleDriveService;
         }
 
         // GET: Words
@@ -164,17 +167,18 @@ namespace CopticDictionarynew1.Controllers
 
 
 
-        // GET: CreateMeaning (Shows the form to create a new meaning for a specific word)
         public IActionResult CreateMeaning(int wordId)
         {
             ViewBag.WordId = wordId; // Pass the WordId to the view
+            ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text");
+
             return View();
         }
 
         // POST: CreateMeaning (Handles form submission, saves meaning, and links it to the word)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateMeaning(int wordId, [Bind("MeaningText,Notes")] Meaning meaning)
+        public async Task<IActionResult> CreateMeaning(int wordId, [Bind("MeaningText,Notes,Language")] Meaning meaning)
         {
             if (ModelState.IsValid)
             {
@@ -189,7 +193,8 @@ namespace CopticDictionarynew1.Controllers
                     WordMeaning wordMeaning = new WordMeaning
                     {
                         WordID = wordId,        // This is the correct Word ID
-                        MeaningID = meaning.ID  // This is the newly created Meaning ID
+                        MeaningID = meaning.ID
+                        // This is the newly created Meaning ID
                     };
 
                     _context.WordMeanings.Add(wordMeaning);
@@ -199,7 +204,7 @@ namespace CopticDictionarynew1.Controllers
                     return RedirectToAction("Details", new { id = wordId });
                 }
             }
-
+            ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text");
             ViewBag.WordId = wordId; // If form is invalid, pass WordId again
             return View(meaning);
         }
@@ -2232,6 +2237,7 @@ namespace CopticDictionarynew1.Controllers
             }
 
             var wordExplanation = await _context.WordExplanations.FindAsync(id);
+            ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text");
             if (wordExplanation == null)
             {
                 return NotFound();
@@ -2269,6 +2275,8 @@ namespace CopticDictionarynew1.Controllers
                 }
                 return RedirectToAction("Details", "Words", new { id = wordExplanation.WordID });
             }
+            ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text");
+
             return View(wordExplanation);
         }
 
@@ -2310,6 +2318,127 @@ namespace CopticDictionarynew1.Controllers
             return _context.WordExplanations.Any(e => e.ID == id);
         }
 
+        [HttpPost]
+        public async Task<IActionResult> UploadPronunciation(int wordId, IFormFile audioFile)
+        {
+            try
+            {
+                _logger.LogInformation("Upload pronunciation request for word {WordId}", wordId);
+
+                if (audioFile == null || audioFile.Length == 0)
+                {
+                    _logger.LogWarning("No audio file provided for word {WordId}", wordId);
+                    return Json(new { success = false, message = "No audio file provided" });
+                }
+
+                var word = await _context.Words.FindAsync(wordId);
+                if (word == null)
+                {
+                    _logger.LogWarning("Word not found: {WordId}", wordId);
+                    return Json(new { success = false, message = "Word not found" });
+                }
+
+                // Check file size (limit to 10MB)
+                if (audioFile.Length > 10 * 1024 * 1024)
+                {
+                    return Json(new { success = false, message = "File too large. Maximum size is 10MB." });
+                }
+
+                // Check file type
+                var allowedTypes = new[] { "audio/wav", "audio/mpeg", "audio/mp3", "audio/ogg" };
+                if (!allowedTypes.Contains(audioFile.ContentType.ToLower()))
+                {
+                    return Json(new { success = false, message = "Invalid file type. Please upload an audio file." });
+                }
+
+                // Generate unique filename
+                var fileName = $"pronunciation_{wordId}_{DateTime.UtcNow:yyyyMMddHHmmss}.wav";
+
+                _logger.LogInformation("Uploading file {FileName} for word {WordId}", fileName, wordId);
+
+                // Upload to Google Drive
+                using (var stream = audioFile.OpenReadStream())
+                {
+                    var fileId = await _googleDriveService.UploadAudioFileAsync(stream, fileName);
+                    var publicLink = await _googleDriveService.GetPublicLinkAsync(fileId);
+
+                    // Update word with pronunciation link
+                    word.Pronunciation = publicLink;
+                    await _context.SaveChangesAsync();
+
+                    _logger.LogInformation("Pronunciation saved successfully for word {WordId}", wordId);
+                    return Json(new { success = true, pronunciationUrl = publicLink });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading pronunciation for word {WordId}", wordId);
+                return Json(new { success = false, message = $"Error uploading pronunciation: {ex.Message}" });
+            }
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> DeletePronunciation(int wordId)
+        {
+            try
+            {
+                var word = await _context.Words.FindAsync(wordId);
+                if (word == null)
+                {
+                    return Json(new { success = false, message = "Word not found" });
+                }
+
+                if (!string.IsNullOrEmpty(word.Pronunciation))
+                {
+                    // Extract file ID from Google Drive URL
+                    var fileId = ExtractFileIdFromUrl(word.Pronunciation);
+                    if (!string.IsNullOrEmpty(fileId))
+                    {
+                        await _googleDriveService.DeleteFileAsync(fileId);
+                    }
+
+                    word.Pronunciation = null;
+                    await _context.SaveChangesAsync();
+                }
+
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting pronunciation for word {WordId}", wordId);
+                return Json(new { success = false, message = "Error deleting pronunciation" });
+            }
+        }
+
+        private string ExtractFileIdFromUrl(string googleDriveUrl)
+        {
+            if (string.IsNullOrEmpty(googleDriveUrl))
+                return null;
+
+            // Extract file ID from Google Drive URL pattern
+            var match = System.Text.RegularExpressions.Regex.Match(googleDriveUrl, @"/file/d/([a-zA-Z0-9-_]+)");
+            return match.Success ? match.Groups[1].Value : null;
+        }
+        // ...existing code...
+
+        [HttpGet]
+        public async Task<IActionResult> TestGoogleDrive()
+        {
+            try
+            {
+                // Create a test stream
+                var testContent = "Hello, Google Drive!";
+                var testStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testContent));
+
+                var fileId = await _googleDriveService.UploadAudioFileAsync(testStream, "test.txt");
+                return Json(new { success = true, fileId = fileId });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
 
 
 

@@ -8,6 +8,13 @@
 <div>
     <h4>Word Details</h4>
     <hr />
+
+    <!-- Hidden field for word ID -->
+    <input type="hidden" id="word-id" value="@Model.WordId" />
+
+    <!-- Add anti-forgery token -->
+    @Html.AntiForgeryToken()
+
     <dl class="row">
         <dt class="col-sm-2">
             @Html.DisplayNameFor(model => model.Word_text)
@@ -144,7 +151,114 @@
             Pronunciation
         </dt>
         <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Pronunciation)
+            <!-- Current pronunciation display -->
+            <div id="current-pronunciation">
+                @if (!string.IsNullOrEmpty(Model.Pronunciation))
+                {
+                    <div class="current-audio">
+                        <h5>Current Pronunciation:</h5>
+                        @{
+                            var fileId = "";
+                            if (Model.Pronunciation.Contains("/file/d/"))
+                            {
+                                var match = System.Text.RegularExpressions.Regex.Match(Model.Pronunciation, @"/file/d/([a-zA-Z0-9-_]+)");
+                                fileId = match.Success ? match.Groups[1].Value : "";
+                            }
+                            else if (Model.Pronunciation.Contains("id="))
+                            {
+                                var match = System.Text.RegularExpressions.Regex.Match(Model.Pronunciation, @"id=([a-zA-Z0-9-_]+)");
+                                fileId = match.Success ? match.Groups[1].Value : "";
+                            }
+
+                            var directDownloadUrl = !string.IsNullOrEmpty(fileId) ? $"https://drive.google.com/uc?export=download&id={fileId}" : Model.Pronunciation;
+                            var embedUrl = !string.IsNullOrEmpty(fileId) ? $"https://drive.google.com/file/d/{fileId}/preview" : Model.Pronunciation;
+
+                            // Determine audio type
+                            var audioType = "audio/webm"; // Default for modern browsers recording
+                            if (Model.Pronunciation.Contains(".wav"))
+                            {
+                                audioType = "audio/wav";
+                            }
+                            else if (Model.Pronunciation.Contains(".mp3"))
+                            {
+                                audioType = "audio/mpeg";
+                            }
+                            else if (Model.Pronunciation.Contains(".ogg"))
+                            {
+                                audioType = "audio/ogg";
+                            }
+                        }
+
+                        <!-- Debug info (remove after testing) -->
+                        <div class="alert alert-info">
+                            <small>Debug: @directDownloadUrl</small><br>
+                            <small>Original: @Model.Pronunciation</small><br>
+                            <small>Audio Type: @audioType</small>
+                        </div>
+
+                        <!-- Try direct download first -->
+                        <audio controls class="mb-2" preload="metadata" controlsList="nodownload"
+                               onerror="console.log('Audio error:', this.error); this.style.display='none';"
+                               onloadeddata="console.log('Audio loaded successfully')">
+                            <source src="@directDownloadUrl" type="@audioType">
+                            Your browser does not support the audio element.
+                        </audio>
+
+                        <!-- Alternative: Try with different Google Drive URL format -->
+                        <audio controls class="mb-2" preload="metadata" controlsList="nodownload"
+                               onerror="console.log('Alternative audio error:', this.error); this.style.display='none';"
+                               onloadeddata="console.log('Alternative audio loaded successfully')">
+                            <source src="https://docs.google.com/uc?export=download&id=@fileId" type="@audioType">
+                            Your browser does not support the audio element.
+                        </audio>
+
+                        <!-- Fallback: Google Drive embed -->
+                        <div class="mt-2">
+                            <small class="text-muted">If audio doesn't play above, try:</small><br>
+                            <iframe src="@embedUrl" width="100%" height="60" frameborder="0"></iframe>
+                        </div>
+
+                        <br>
+                        <small class="text-muted">
+                            <a href="@directDownloadUrl" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-download"></i> Download Audio
+                            </a>
+                        </small>
+                        <br>
+                        <button type="button" class="btn btn-danger btn-sm mt-2" onclick="deletePronunciation()">
+                            <i class="bi bi-trash"></i> Delete Pronunciation
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted">No pronunciation recorded</p>
+                }
+            </div>
+
+            <!-- Recording controls -->
+            <div class="mt-3">
+                <h5>Record New Pronunciation:</h5>
+                <div id="recorder-controls" style="display: none;">
+                    <button type="button" id="record-btn" class="btn btn-primary" onclick="startRecording()">
+                        <i class="bi bi-mic"></i> Start Recording
+                    </button>
+                    <button type="button" id="stop-btn" class="btn btn-danger" onclick="stopRecording()" style="display: none;">
+                        <i class="bi bi-stop"></i> Stop Recording
+                    </button>
+                    <span id="recording-indicator" class="text-danger ms-2" style="display: none;">
+                        <i class="bi bi-record-circle-fill"></i> Recording...
+                    </span>
+                </div>
+
+                <!-- Preview area -->
+                <div id="pronunciation-preview" class="mt-3"></div>
+
+                <!-- Initialize button for browsers that need explicit permission -->
+                <button type="button" class="btn btn-info btn-sm" onclick="initializeRecorder()">
+                    <i class="bi bi-mic-fill"></i> Enable Microphone
+                </button>
+            </div>
         </dd>
         <dt class="col-sm-2">
             Is Derived Word
@@ -483,7 +597,7 @@
             </div>
 
             <!-- Related Words Section -->
-            @if (word_meaning?.Meaning?.WordMeanings != null && Model?.GroupWord?.Words != null)
+            @if (word_meaning?.Meaning?.WordMeanings != null)
 
             {
                 <div class="mt-4">
@@ -527,4 +641,128 @@
 </div>
 
 <!-- ... rest of the existing code ... -->
+@section Scripts {
+    <script src="~/js/audio-recorder.js"></script>
+    <script>
+        function updatePronunciationDisplay(pronunciationUrl) {
+            const container = document.getElementById('current-pronunciation');
+
+            if (pronunciationUrl) {
+                // Extract file ID from Google Drive URL
+                let fileId = '';
+                if (pronunciationUrl.includes('/file/d/')) {
+                    const match = pronunciationUrl.match(/\/file\/d\/([a-zA-Z0-9-_]+)/);
+                    fileId = match ? match[1] : '';
+                } else if (pronunciationUrl.includes('id=')) {
+                    const match = pronunciationUrl.match(/id=([a-zA-Z0-9-_]+)/);
+                    fileId = match ? match[1] : '';
+                }
+
+                const directDownloadUrl = fileId ? `https://drive.google.com/uc?export=download&id=${fileId}` : pronunciationUrl;
+                const embedUrl = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : pronunciationUrl;
+
+                // Determine audio type
+                let audioType = 'audio/webm';
+                if (pronunciationUrl.includes('.wav')) {
+                    audioType = 'audio/wav';
+                } else if (pronunciationUrl.includes('.mp3')) {
+                    audioType = 'audio/mpeg';
+                } else if (pronunciationUrl.includes('.ogg')) {
+                    audioType = 'audio/ogg';
+                }
+
+                container.innerHTML = `
+                    <div class="current-audio">
+                        <h5>Current Pronunciation:</h5>
+
+                        <!-- Debug info -->
+                        <div class="alert alert-info">
+                            <small>Debug: ${directDownloadUrl}</small><br>
+                            <small>Original: ${pronunciationUrl}</small><br>
+                            <small>Audio Type: ${audioType}</small>
+                        </div>
+
+                        <!-- Primary audio element -->
+                        <audio controls class="mb-2" preload="metadata" controlsList="nodownload"
+                               onerror="console.log('Audio error:', this.error); this.style.display='none';"
+                               onloadeddata="console.log('Audio loaded successfully')">
+                            <source src="${directDownloadUrl}" type="${audioType}">
+                            Your browser does not support the audio element.
+                        </audio>
+
+                        <!-- Alternative audio element -->
+                        <audio controls class="mb-2" preload="metadata" controlsList="nodownload"
+                               onerror="console.log('Alternative audio error:', this.error); this.style.display='none';"
+                               onloadeddata="console.log('Alternative audio loaded successfully')">
+                            <source src="https://docs.google.com/uc?export=download&id=${fileId}" type="${audioType}">
+                            Your browser does not support the audio element.
+                        </audio>
+
+                        <!-- Fallback: Google Drive embed -->
+                        <div class="mt-2">
+                            <small class="text-muted">If audio doesn't play above, try:</small><br>
+                            <iframe src="${embedUrl}" width="100%" height="60" frameborder="0"></iframe>
+                        </div>
+
+                        <br>
+                        <small class="text-muted">
+                            <a href="${directDownloadUrl}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-download"></i> Download Audio
+                            </a>
+                        </small>
+                        <br>
+                        <button type="button" class="btn btn-danger btn-sm mt-2" onclick="deletePronunciation()">
+                            <i class="bi bi-trash"></i> Delete Pronunciation
+                        </button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = '<p class="text-muted">No pronunciation recorded</p>';
+            }
+        }
+
+        function deletePronunciation() {
+            if (!confirm('Are you sure you want to delete this pronunciation?')) {
+                return;
+            }
+
+            const wordId = document.getElementById('word-id').value;
+            console.log('WordId from input:', wordId); // Debug log
+
+            if (!wordId || wordId === '0') {
+                alert('Word ID not found');
+                return;
+            }
+
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+            const formData = new FormData();
+            formData.append('wordId', wordId);
+            formData.append('__RequestVerificationToken', token);
+
+            fetch('/Words/DeletePronunciation', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                if (data.success) {
+                    // Update the display to show no pronunciation
+                    updatePronunciationDisplay(null);
+                    alert('Pronunciation deleted successfully');
+                } else {
+                    alert('Error deleting pronunciation: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error deleting pronunciation');
+            });
+        }
+    </script>
+}
 

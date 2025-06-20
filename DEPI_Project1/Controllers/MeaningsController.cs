@@ -13,7 +13,32 @@ namespace CopticDictionarynew1.Controllers
     public class MeaningsController : Controller
     {
         private readonly ApplicationDbContext _context;
-
+        private List<SelectListItem> GetLanguagesList()
+        {
+            return new List<SelectListItem>
+                {
+                    new SelectListItem { Value = "AR", Text = "Arabic" },
+                    new SelectListItem { Value = "FR", Text = "French" },
+                    new SelectListItem { Value = "EN", Text = "English" },
+                    new SelectListItem { Value = "RU", Text = "Russian" },
+                    new SelectListItem { Value = "DE", Text = "German" },
+                    new SelectListItem { Value = "IT", Text = "Italian" },
+                    new SelectListItem { Value = "HE", Text = "Hebrew" },
+                    new SelectListItem { Value = "GR", Text = "Greek" },
+                    new SelectListItem { Value = "ARC", Text = "Aramaic" },
+                    new SelectListItem { Value = "EG",  Text = "Egyptian" },
+                    new SelectListItem { Value = "C-B" , Text = "Coptic - B" },
+                    new SelectListItem { Value = "C-S",  Text = "Coptic - S" },
+                    new SelectListItem { Value = "C-Sa", Text = "Coptic - Sa" },
+                    new SelectListItem { Value = "C-Sf", Text = "Coptic - Sf" },
+                    new SelectListItem { Value = "C-A",  Text = "Coptic - A" },
+                    new SelectListItem { Value = "C-sA", Text = "Coptic - sA" },
+                    new SelectListItem { Value = "C-F",  Text = "Coptic - F" },
+                    new SelectListItem { Value = "C-Fb", Text = "Coptic - Fb" },
+                    new SelectListItem { Value = "C-O",  Text = "Coptic - O" },
+                    new SelectListItem { Value = "C-NH", Text = "Coptic - NH" }
+                };
+        }
         public MeaningsController(ApplicationDbContext context)
         {
             _context = context;
@@ -70,6 +95,7 @@ namespace CopticDictionarynew1.Controllers
         }
 
         // GET: Meanings/Edit/5
+        // GET: Meanings/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -84,6 +110,7 @@ namespace CopticDictionarynew1.Controllers
             }
             ViewData["ParentMeaningID"] = new SelectList(_context.Meanings, "ID", "ID", meaning.ParentMeaningID);
             TempData["ReturnUrl"] = Request.Headers["Referer"].ToString();
+            ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text");
 
             return View(meaning);
         }
@@ -118,11 +145,12 @@ namespace CopticDictionarynew1.Controllers
                         throw;
                     }
                 }
-                    var returnUrl = TempData["ReturnUrl"] as string;
-                    if (!string.IsNullOrEmpty(returnUrl))
-                    {
-                        return Redirect(returnUrl);
-                    }            }
+                var returnUrl = TempData["ReturnUrl"] as string;
+                if (!string.IsNullOrEmpty(returnUrl))
+                {
+                    return Redirect(returnUrl);
+                }
+            }
             ViewData["ParentMeaningID"] = new SelectList(_context.Meanings, "ID", "ID", meaning.ParentMeaningID);
             return View(meaning);
         }

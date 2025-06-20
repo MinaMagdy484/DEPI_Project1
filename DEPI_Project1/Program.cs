@@ -1,3 +1,4 @@
+using CopticDictionarynew1.Services;
 using DEPI_Project1.Models;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
@@ -38,42 +39,49 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ConStr1"));
 });
 
-// Add logging service
-builder.Logging.ClearProviders();  // Clear default logging providers (optional)
-builder.Logging.AddConsole();      // Add console logging
-builder.Logging.AddDebug();        // Add debug logging
-
-//builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
-//    .AddEntityFrameworkStores<ApplicationDbContext>();
-
+// Configure Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.User.RequireUniqueEmail = true;
     options.Password.RequireDigit = false;
     options.Password.RequiredLength = 4;
-    options.Password.RequireDigit = false;
     options.Password.RequireLowercase = false;
     options.Password.RequireUppercase = false;
     options.User.AllowedUserNameCharacters = null; // Allow any characters in the username
 })
-
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
+
+// Configure logging
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+builder.Services.AddScoped<IGoogleDriveService, GoogleDriveService>();
+
 var app = builder.Build();
 
-#region  Perform database seeding
+//#region Perform database seeding and import Excel data
 
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-    var dbInitializer = new DbInitializer(dbContext,roleManager,userManager);
-    dbInitializer.Seed().Wait();  // Call the seeding logic
-}
+//using (var scope = app.Services.CreateScope())
+//{
+//    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+//    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+//    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
+//    // Seed roles/users
+//    var dbInitializer = new DbInitializer(dbContext, roleManager, userManager);
+//    dbInitializer.Seed().Wait();
 
-#endregion
+//    // Import Excel data
+//    var excelImporter = new ExcelImporter();
+//    excelImporter.ImportDataFromExcel("D:\\Coptic Dictionary MD project\\data to publish\\result6 - 01.xlsx");
+
+//    var dbService = new DatabaseService(dbContext);
+//    dbService.InsertAllData(excelImporter);
+//    Console.WriteLine("All data imported successfully!");
+//}
+
+//#endregion
 
 // Configure the HTTP request pipeline
 if (!app.Environment.IsDevelopment())
@@ -101,10 +109,130 @@ try
 }
 catch (Exception ex)
 {
-    // Log any unhandled exception at the application level
     Console.WriteLine($"Application startup error: {ex.Message}");
 }
 
+
+//using DEPI_Project1.Models;
+//using Microsoft.AspNetCore.Authentication.Cookies;
+//using Microsoft.AspNetCore.Identity;
+//using Microsoft.EntityFrameworkCore;
+
+//using (var context = new ApplicationDbContext(optionsBuilder.Options))
+//{
+//    var excelImporter = new ExcelImporter();
+//    excelImporter.ImportDataFromExcel("C:\\Users\\minam\\result6 - 01.xlsx");
+
+//    var dbService = new DatabaseService(context);
+//    dbService.InsertAllData(excelImporter);
+//}
+
+//Console.WriteLine("All data imported successfully!");
+
+//var builder = WebApplication.CreateBuilder(args);
+
+//// Add services to the container.
+//builder.Services.AddControllersWithViews();
+
+//// Configure session
+//builder.Services.AddSession(options =>
+//{
+//    options.IdleTimeout = TimeSpan.FromHours(1);  // Session timeout duration
+//    options.Cookie.HttpOnly = true;               // Ensures the cookie is accessible only through HTTP requests
+//    options.Cookie.IsEssential = true;            // Marks the cookie as essential for GDPR compliance
+//});
+
+//// Configure authentication with cookie scheme
+//builder.Services.AddAuthentication(options =>
+//{
+//    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+//    options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+//})
+//.AddCookie(options =>
+//{
+//    options.LoginPath = "/Account/Login";        // Redirect to Login when user is not authenticated
+//    options.LogoutPath = "/Account/Logout";      // Path for logging out
+//    options.ExpireTimeSpan = TimeSpan.FromHours(1);  // Cookie expiration time
+//    options.SlidingExpiration = true;            // Refreshes the cookie before expiration
+//    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;  // Ensures the cookie is only sent over HTTPS
+//    options.Cookie.SameSite = SameSiteMode.Strict;  // Ensures strict SameSite enforcement
+//});
+
+//// Configure the DbContext to use SQL Server
+//builder.Services.AddDbContext<ApplicationDbContext>(options =>
+//{
+//    options.UseSqlServer(builder.Configuration.GetConnectionString("ConStr1"));
+//});
+
+//// Add logging service
+//builder.Logging.ClearProviders();  // Clear default logging providers (optional)
+//builder.Logging.AddConsole();      // Add console logging
+//builder.Logging.AddDebug();        // Add debug logging
+
+////builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+////    .AddEntityFrameworkStores<ApplicationDbContext>();
+
+//builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+//{
+//    options.User.RequireUniqueEmail = true;
+//    options.Password.RequireDigit = false;
+//    options.Password.RequiredLength = 4;
+//    options.Password.RequireDigit = false;
+//    options.Password.RequireLowercase = false;
+//    options.Password.RequireUppercase = false;
+//    options.User.AllowedUserNameCharacters = null; // Allow any characters in the username
+//})
+
+//.AddEntityFrameworkStores<ApplicationDbContext>()
+//.AddDefaultTokenProviders();
+//var app = builder.Build();
+
+//#region  Perform database seeding
+
+//using (var scope = app.Services.CreateScope())
+//{
+//    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+//    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+//    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+//    var dbInitializer = new DbInitializer(dbContext,roleManager,userManager);
+//    dbInitializer.Seed().Wait();  // Call the seeding logic
+//}
+
+
+//#endregion
+
+//// Configure the HTTP request pipeline
+//if (!app.Environment.IsDevelopment())
+//{
+//    app.UseExceptionHandler("/Home/Error"); // Generic error handler in non-development environments
+//    app.UseHsts();                          // Use HSTS (Strict Transport Security)
+//}
+
+//app.UseHttpsRedirection();       // Redirects HTTP to HTTPS
+//app.UseStaticFiles();            // Serve static files
+//app.UseRouting();                // Routing middleware
+//app.UseSession();                // Enable session support
+//app.UseAuthentication();         // Enable authentication
+//app.UseAuthorization();          // Enable authorization
+
+//// Route configuration
+//app.MapControllerRoute(
+//    name: "default",
+//    pattern: "{controller=Home}/{action=Index}/{id?}");
+
+//// Exception handling for application startup
+//try
+//{
+//    app.Run();
+//}
+//catch (Exception ex)
+//{
+//    // Log any unhandled exception at the application level
+//    Console.WriteLine($"Application startup error: {ex.Message}");
+//}
+
+
+/////*****************************************************
 
 //using Microsoft.EntityFrameworkCore;
 //using Microsoft.AspNetCore.Session;
