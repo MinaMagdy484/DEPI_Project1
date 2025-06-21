@@ -612,13 +612,44 @@
                         .Where(w => w.WordID != Model.WordId) // Exclude current word
                         .GroupBy(w => w.Word.Language)
                         .OrderBy(g => g.Key);
+
+                        // Create a helper function to get language display name
+                        var languagesList = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>
+            {
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "AR", Text = "Arabic" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "FR", Text = "French" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "EN", Text = "English" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "RU", Text = "Russian" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "DE", Text = "German" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "IT", Text = "Italian" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "HE", Text = "Hebrew" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "GR", Text = "Greek" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "ARC", Text = "Aramaic" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "EG", Text = "Egyptian" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "C-B", Text = "Coptic - B" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "C-S", Text = "Coptic - S" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "C-Sa", Text = "Coptic - Sa" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "C-Sf", Text = "Coptic - Sf" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "C-A", Text = "Coptic - A" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "C-sA", Text = "Coptic - sA" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "C-F", Text = "Coptic - F" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "C-Fb", Text = "Coptic - Fb" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "C-O", Text = "Coptic - O" },
+            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = "C-NH", Text = "Coptic - NH" }
+            };
+
+                        string GetLanguageDisplayName(string languageCode)
+                        {
+                            var language = languagesList.FirstOrDefault(l => l.Value == languageCode);
+                            return language?.Text ?? languageCode;
+                        }
                     }
 
                     @foreach (var languageGroup in groupedWords)
                     {
                         <div class="card mb-3">
                             <div class="card-header d-flex justify-content-between align-items-center">
-                                <h4>@languageGroup.Key</h4>
+                                <h4>@GetLanguageDisplayName(languageGroup.Key)</h4>
                                 <small class="text-muted">@languageGroup.Count() word(s)</small>
                             </div>
                             <div class="card-body">
