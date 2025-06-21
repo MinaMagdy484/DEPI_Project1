@@ -854,6 +854,7 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
                     .Select(g => g.Name)
                     .FirstOrDefaultAsync()
                 : string.Empty;
+            ViewData["Class"] = new SelectList(GetPartOfSpeechList(), "Value", "Text");
 
             _logger.LogInformation("Root and Group values populated for WordId: {WordId}", id);
             return View(word);
@@ -894,6 +895,7 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
                 return RedirectToAction("Details", new { id = word.WordId });
 
             }
+            ViewData["Class"] = new SelectList(GetPartOfSpeechList(), "Value", "Text");
 
             // Repopulate dropdowns in case of validation errors
             ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text", word.Language);
