@@ -2600,7 +2600,66 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
         }
 
         // ...existing code...
+        [HttpGet]
+        public async Task<IActionResult> SearchRoots(string searchTerm)
+        {
+            try
+            {
+                var rootsQuery = _context.Words
+                    .Where(w => w.Language.StartsWith("C-"))
+                    .AsQueryable();
 
+                var allRoots = await rootsQuery.ToListAsync();
+
+                // Apply search filtering if search term is provided
+                if (!string.IsNullOrEmpty(searchTerm))
+                {
+                    var normalizedSearch = NormalizeString(searchTerm);
+                    allRoots = allRoots.Where(w => NormalizeString(w.Word_text).Contains(normalizedSearch)).ToList();
+                }
+
+                var results = allRoots.Select(w => new {
+                    value = w.WordId,
+                    text = w.Word_text + " (" + w.Language + ", " + w.Class + ")"
+                }).Take(50).ToList(); // Limit to 50 results for performance
+
+                return Json(results);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> SearchGroups(string searchTerm)
+        {
+            try
+            {
+                var groupsQuery = _context.Groups.AsQueryable();
+                var allGroups = await groupsQuery.ToListAsync();
+
+                // Apply search filtering if search term is provided
+                if (!string.IsNullOrEmpty(searchTerm))
+                {
+                    var normalizedSearch = NormalizeString(searchTerm);
+                    allGroups = allGroups.Where(g => NormalizeString(g.Name).Contains(normalizedSearch) ||
+                                                   NormalizeString(g.OriginLanguage ?? "").Contains(normalizedSearch) ||
+                                                   NormalizeString(g.EtymologyWord ?? "").Contains(normalizedSearch)).ToList();
+                }
+
+                var results = allGroups.Select(g => new {
+                    value = g.ID,
+                    text = g.Name + " (" + g.OriginLanguage + ", " + g.EtymologyWord + ")"
+                }).Take(50).ToList(); // Limit to 50 results for performance
+
+                return Json(results);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
 
 
     }
