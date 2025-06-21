@@ -758,7 +758,8 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
             {
                 _context.Add(word);
                 await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction("Details", new { id = word.WordId });
+
             }
 
             // Repopulate dropdowns in case of validation error
@@ -890,7 +891,8 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
                     }
                 }
 
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction("Details", new { id = word.WordId });
+
             }
 
             // Repopulate dropdowns in case of validation errors
