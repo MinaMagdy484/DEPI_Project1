@@ -389,21 +389,48 @@ namespace CopticDictionarynew1.Controllers
 
             return View(wordMeaning);
         }
-
+//21/6/2025
         // POST: WordMeanings/DeleteConfirmed
-        [HttpPost, ActionName("DeleteWM")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmedWM(int id)
-        {
-            var wordMeaning = await _context.WordMeanings.FindAsync(id);
-            if (wordMeaning != null)
-            {
-                _context.WordMeanings.Remove(wordMeaning);
-                await _context.SaveChangesAsync();
-            }
+        // [HttpPost, ActionName("DeleteWM")]
+        // [ValidateAntiForgeryToken]
+        // public async Task<IActionResult> DeleteConfirmedWM(int id)
+        // {
+        //     var wordMeaning = await _context.WordMeanings.FindAsync(id);
+        //     if (wordMeaning != null)
+        //     {
+        //         _context.WordMeanings.Remove(wordMeaning);
+        //         await _context.SaveChangesAsync();
+        //     }
 
-            return RedirectToAction(nameof(Index));
-        }
+        //     return RedirectToAction(nameof(Index));
+        // }
+        // ...existing code...
+
+// POST: WordMeanings/DeleteConfirmed
+[HttpPost, ActionName("DeleteWM")]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
+{
+    var wordMeaning = await _context.WordMeanings.FindAsync(id);
+    if (wordMeaning != null)
+    {
+        // Store the WordID before deletion for redirect
+        var redirectWordId = wordId ?? wordMeaning.WordID;
+        
+        _context.WordMeanings.Remove(wordMeaning);
+        await _context.SaveChangesAsync();
+        
+        // Redirect back to the word details page
+        return RedirectToAction("Details", new { id = redirectWordId });
+    }
+
+    return RedirectToAction(nameof(Index));
+}
+
+// ...existing code...
+
+
+
         //.Include(w => w.WordMeanings)
         //    .ThenInclude(wm => wm.Examples) // Include examples for word meanings
         //.Include(w => w.WordMeanings)
@@ -2440,7 +2467,89 @@ namespace CopticDictionarynew1.Controllers
             }
         }
 
+    // GET: SelectWordForMeaning (For selecting an existing word and linking it to a specific meaning)
+public IActionResult SelectWordForMeaning(int meaningId, int currentWordId)
+{
+    // Get the meaning to display context
+    var meaning = _context.Meanings
+        .Include(m => m.WordMeanings)
+        .ThenInclude(wm => wm.Word)
+        .FirstOrDefault(m => m.ID == meaningId);
 
+    if (meaning == null)
+    {
+        return NotFound();
+    }
+
+    // Get words already linked to this meaning to exclude them from selection
+    var linkedWordIds = meaning.WordMeanings.Select(wm => wm.WordID).ToList();
+
+    // Get available words (excluding already linked ones)
+    var availableWords = _context.Words
+        .Where(w => !linkedWordIds.Contains(w.WordId))
+        .Select(w => new SelectListItem
+        {
+            Value = w.WordId.ToString(),
+            Text = $"{w.Word_text} ({w.Language}) - {w.Class}"
+        })
+        .ToList();
+
+    ViewBag.Words = new SelectList(availableWords, "Value", "Text");
+    ViewBag.MeaningId = meaningId;
+    ViewBag.CurrentWordId = currentWordId;
+    ViewBag.MeaningText = meaning.MeaningText;
+    
+    return View();
+}
+
+// POST: SelectWordForMeaning (Handles the selection and creates the WordMeaning relationship)
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> SelectWordForMeaning(int meaningId, int selectedWordId, int currentWordId)
+{
+    // Validate that the meaning exists
+    var meaningExists = await _context.Meanings.AnyAsync(m => m.ID == meaningId);
+    if (!meaningExists)
+    {
+        ModelState.AddModelError("", "The selected meaning does not exist.");
+        return RedirectToAction("Details", new { id = currentWordId });
+    }
+
+    // Validate that the word exists
+    var wordExists = await _context.Words.AnyAsync(w => w.WordId == selectedWordId);
+    if (!wordExists)
+    {
+        ModelState.AddModelError("", "The selected word does not exist.");
+        return RedirectToAction("Details", new { id = currentWordId });
+    }
+
+    // Check if this word-meaning relationship already exists
+    var existingRelationship = await _context.WordMeanings
+        .AnyAsync(wm => wm.WordID == selectedWordId && wm.MeaningID == meaningId);
+
+    if (existingRelationship)
+    {
+        // If relationship already exists, just redirect back
+        return RedirectToAction("Details", new { id = currentWordId });
+    }
+
+    if (ModelState.IsValid)
+    {
+        // Create new word-meaning relationship
+        WordMeaning wordMeaning = new WordMeaning
+        {
+            WordID = selectedWordId,
+            MeaningID = meaningId
+        };
+
+        _context.WordMeanings.Add(wordMeaning);
+        await _context.SaveChangesAsync();
+        
+        return RedirectToAction("Details", new { id = currentWordId });
+    }
+
+    return RedirectToAction("Details", new { id = currentWordId });
+}
 
 
 

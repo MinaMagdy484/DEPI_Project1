@@ -40,10 +40,22 @@
         <dd class = "col-sm-10">
             @Html.DisplayFor(model => model.Notes)
         </dd>
-
     </dl>
 </div>
 
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["Message"]
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["Error"]
+    </div>
+}
 
 @if (Model != null)
 {
@@ -66,100 +78,105 @@
         </ul>
 
         <div class="btn-group">
-
-        <a asp-action="AddMeaningToGroup"
-           asp-controller="GroupWords"
-           asp-route-groupId="@Model.ID"
-           asp-route-wordId=""
-           class="btn btn-primary">
-            Add Defintion to All Words in this Group
-        </a>
-            @* <a asp-action="AddMeaningToGroup" asp-route-groupId="@Model.ID" asp-route-wordId="" class="btn btn-primary">
-                Add New Meaning
-            </a> *@
+            <a asp-action="AddMeaningToGroup"
+               asp-controller="GroupWords"
+               asp-route-groupId="@Model.ID"
+               asp-route-wordId=""
+               class="btn btn-primary">
+                Add Defintion to All Words in this Group
+            </a>
             <a asp-action="AddExistingMeaningToGroup" asp-route-groupId="@Model.ID" asp-route-wordId="" class="btn btn-secondary">
                 Add Existing Meaning
             </a>
         </div>
+        
         <h4>Words in this Group</h4>
-
         <ul>
             @foreach (var groupWord in Model.Words.OrderBy(w => w.Language).ThenBy(w => w.Word_text))
             {
-                @* <li>@groupWord.Word_text (@groupWord.Language, @groupWord.Class)</li>*@
-                <h5> <a asp-controller="GroupWords" asp-action="Details" asp-route-id="@groupWord.WordId">@groupWord.Word_text (@groupWord.Language, @groupWord.Class) </a> </h5>
-
+                <h5> <a asp-controller="Words" asp-action="Details" asp-route-id="@groupWord.WordId">@groupWord.Word_text (@groupWord.Language, @groupWord.Class) </a> </h5>
             }
         </ul>
     </dd>
 
     <h3 style="display:inline;">Parent Groups</h3>
-    <a asp-action="CreateGroupAsParent" asp-controller="Words" asp-route-ChildGroupID="@Model.ID" asp-route-wordId="">Create Parent Group</a>
-    int ii = 1;
+    <div class="btn-group mb-3">
+        <a asp-action="CreateGroupAsParent" asp-controller="GroupWords" asp-route-ChildGroupID="@Model.ID" asp-route-wordId="" class="btn btn-success">Create New Parent Group</a>
+        <a asp-action="SelectExistingGroupAsParent" asp-controller="GroupWords" asp-route-childGroupID="@Model.ID" class="btn btn-info">Select Existing Group as Parent</a>
+    </div>
+    
+    
+        int ii = 1;
+    
     <ul>
-
-
-
         @foreach (var parentRelation in Model.GroupParents)
         {
-
             <h4 style="display:inline;"> <a asp-controller="GroupWords" asp-action="Details" asp-route-id="@parentRelation.ParentGroup.ID">(@ii) @parentRelation.ParentGroup.Name</a> </h4>
-            <a asp-action="AddWordToGroup" asp-route-groupid="@parentRelation.ParentGroup.ID">Add Word to this Group</a>
+            <a asp-action="AddWordToGroup" asp-route-groupid="@parentRelation.ParentGroup.ID" class="btn btn-sm btn-outline-primary">Add Word to this Group</a>
 
-            @*                     <li style="display:inline;">@parentRelation.ParentGroup.Name</li>
- *@                    <form asp-action="DeleteGroupRelation" method="post" style="display:inline;">
+            <form asp-action="DeleteGroupRelation" method="post" style="display:inline;">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="id" value="@parentRelation.ID" />
                 <input type="hidden" name="wordId" value="@Model.ID" />
-                <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this Group Relation?');">
+                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this Group Relation?');">
                     Delete Group Relation
                 </button>
             </form>
             <br />
-            ii++;
-            int iii = 1;
+            
+            
+                ii++;
+                int iii = 1;
+            
 
-            foreach (var wordsInPar in parentRelation.ParentGroup.Words)
+            @foreach (var wordsInPar in parentRelation.ParentGroup.Words)
             {
-                <h5> <a asp-action="Details" asp-route-id="@wordsInPar.WordId"> @iii- @wordsInPar.Word_text </a> </h5>
-
+                <h5> <a asp-controller="Words" asp-action="Details" asp-route-id="@wordsInPar.WordId"> @iii- @wordsInPar.Word_text </a> </h5>
+                iii++;
             }
-            iii = 1;
         }
     </ul>
     <br />
-    ii = 1;
 
     <h3 style="display:inline;">Child Groups</h3>
-    <a asp-action="CreateGroupAsChild" asp-controller="Words" asp-route-parentGroupID="@Model.ID" asp-route-wordId="">Create Child Group</a>
+    <div class="btn-group mb-3">
+        <a asp-action="CreateGroupAsChild" asp-controller="GroupWords" asp-route-parentGroupID="@Model.ID" asp-route-wordId="" class="btn btn-success">Create New Child Group</a>
+        <a asp-action="SelectExistingGroupAsChild" asp-controller="GroupWords" asp-route-parentGroupID="@Model.ID" class="btn btn-info">Select Existing Group as Child</a>
+    </div>
 
+    
+        ii = 1;
+    
     <ul>
         @foreach (var childRelation in Model.GroupChilds)
         {
-
             <h4 style="display:inline;"> <a asp-controller="GroupWords" asp-action="Details" asp-route-id="@childRelation.RelatedGroup.ID">(@ii) @childRelation.RelatedGroup.Name</a> </h4>
-
-            <a asp-action="AddWordToGroup" asp-route-groupid="@childRelation.RelatedGroup.ID">Add Word to this Group</a>
+            <a asp-action="AddWordToGroup" asp-route-groupid="@childRelation.RelatedGroup.ID" class="btn btn-sm btn-outline-primary">Add Word to this Group</a>
 
             <form asp-action="DeleteGroupRelation" method="post" style="display:inline;">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="id" value="@childRelation.ID" />
                 <input type="hidden" name="wordId" value="@Model.ID" />
-                <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this Group Relation?');">
+                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this Group Relation?');">
                     Delete Group Relation
                 </button>
             </form>
             <br />
-            ii++;
-            int iii = 1;
-            foreach (var wordsInPar in childRelation.RelatedGroup.Words)
+            
+            
+                ii++;
+                int iii = 1;
+            
+            
+            @foreach (var wordsInPar in childRelation.RelatedGroup.Words)
             {
-                <h5> <a asp-action="Details" asp-route-id="@wordsInPar.WordId"> @iii @wordsInPar.Word_text </a> </h5>
+                <h5> <a asp-controller="Words" asp-action="Details" asp-route-id="@wordsInPar.WordId"> @iii @wordsInPar.Word_text </a> </h5>
                 iii++;
             }
         }
     </ul>
 }
+
 <div>
     <a asp-action="Edit" asp-route-id="@Model?.ID">Edit</a> |
     <a asp-action="Index">Back to List</a>

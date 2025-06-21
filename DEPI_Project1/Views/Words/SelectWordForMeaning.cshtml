@@ -1,0 +1,59 @@
+﻿@{
+    ViewData["Title"] = "Select Word for Meaning";
+}
+
+<h2>Select Word for Meaning</h2>
+
+<div class="card">
+    <div class="card-header">
+        <h5>Adding word to meaning: "@ViewBag.MeaningText"</h5>
+    </div>
+    <div class="card-body">
+        <form asp-action="SelectWordForMeaning" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="meaningId" value="@ViewBag.MeaningId" />
+            <input type="hidden" name="currentWordId" value="@ViewBag.CurrentWordId" />
+
+            <div class="form-group mb-3">
+                <label for="selectedWordId">Select Word:</label>
+                <select name="selectedWordId" id="selectedWordId" class="form-select" required>
+                    <option value="">-- Select a Word --</option>
+                    @foreach (var word in ViewBag.Words as SelectList)
+                    {
+                        <option value="@word.Value">@word.Text</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">Add Word to Meaning</button>
+                <a asp-action="Details" asp-route-id="@ViewBag.CurrentWordId" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Add search functionality to the select dropdown
+    document.addEventListener('DOMContentLoaded', function() {
+        const select = document.getElementById('selectedWordId');
+
+        // Convert to searchable select if you have a library like Select2
+        // Or implement basic search functionality
+        select.addEventListener('keyup', function() {
+            const filter = this.value.toLowerCase();
+            const options = this.getElementsByTagName('option');
+
+            for (let i = 0; i < options.length; i++) {
+                const option = options[i];
+                const text = option.textContent.toLowerCase();
+
+                if (text.includes(filter) || option.value === '') {
+                    option.style.display = '';
+                } else {
+                    option.style.display = 'none';
+                }
+            }
+        });
+    });
+</script>

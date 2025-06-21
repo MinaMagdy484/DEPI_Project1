@@ -1,0 +1,77 @@
+﻿@model List<GroupWord>
+
+@{
+    ViewData["Title"] = "Select Existing Group as Child";
+}
+
+<h2>Select Existing Group as Child</h2>
+
+<form method="get">
+    <input type="hidden" name="parentGroupID" value="@ViewBag.ParentGroupID" />
+    <div class="form-group">
+        <label for="search">Search Groups:</label>
+        <div class="input-group">
+            <input type="text" class="form-control" id="search" name="search" value="@ViewBag.SearchText" placeholder="Enter group name to search..." />
+            <div class="input-group-append">
+                <button class="btn btn-primary" type="submit">Search</button>
+            </div>
+        </div>
+    </div>
+</form>
+
+@if (!string.IsNullOrEmpty(ViewBag.SearchText))
+{
+    @if (Model.Any())
+    {
+        <h4>Search Results:</h4>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Origin Language</th>
+                        <th>Etymology Word</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var group in Model)
+                    {
+                        <tr>
+                            <td>@group.Name</td>
+                            <td>@group.OriginLanguage</td>
+                            <td>@group.EtymologyWord</td>
+                            <td>
+                                <form asp-action="AddExistingGroupAsChild" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="parentGroupID" value="@ViewBag.ParentGroupID" />
+                                    <input type="hidden" name="childGroupID" value="@group.ID" />
+                                    <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Are you sure you want to add this group as a child?');">
+                                        Select as Child
+                                    </button>
+                                </form>
+                                <a asp-action="Details" asp-route-id="@group.ID" class="btn btn-info btn-sm">View Details</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            No groups found matching "@ViewBag.SearchText"
+        </div>
+    }
+}
+else
+{
+    <div class="alert alert-info">
+        Please enter a search term to find groups.
+    </div>
+}
+
+<div>
+    <a asp-action="Details" asp-route-id="@ViewBag.ParentGroupID" class="btn btn-secondary">Back to Group Details</a>
+</div>

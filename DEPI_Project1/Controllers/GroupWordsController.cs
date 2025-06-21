@@ -594,5 +594,115 @@ namespace CopticDictionarynew1.Controllers
                 };
         }
 
+        public async Task<IActionResult> SelectExistingGroupAsChild(int parentGroupID, string? search)
+        {
+            ViewBag.ParentGroupID = parentGroupID;
+            ViewBag.SearchText = search;
+
+            if (string.IsNullOrEmpty(search))
+            {
+                return View(new List<GroupWord>());
+            }
+
+            // Normalize the search string
+            search = NormalizeString(search);
+
+            // Get all groups except the current parent group
+            var groupsQuery = _context.Groups
+                .Where(g => g.ID != parentGroupID)
+                .ToList();
+
+            // Apply contains search
+            var filteredGroups = groupsQuery
+                .Where(g => NormalizeString(g.Name).Contains(search))
+                .ToList();
+
+            return View(filteredGroups);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddExistingGroupAsChild(int parentGroupID, int childGroupID)
+        {
+            // Check if relation already exists
+            var existingRelation = await _context.GroupRelations
+                .FirstOrDefaultAsync(gr => gr.ParentGroupID == parentGroupID && gr.RelatedGroupID == childGroupID);
+
+            if (existingRelation != null)
+            {
+                TempData["Error"] = "This group relation already exists.";
+                return RedirectToAction("Details", new { id = parentGroupID });
+            }
+
+            // Create the GroupRelation
+            var groupRelation = new GroupRelation
+            {
+                ParentGroupID = parentGroupID,
+                RelatedGroupID = childGroupID,
+                IsCompound = false // You can add a parameter for this if needed
+            };
+
+            _context.GroupRelations.Add(groupRelation);
+            await _context.SaveChangesAsync();
+
+            TempData["Message"] = "Group relation created successfully.";
+            return RedirectToAction("Details", new { id = parentGroupID });
+        }
+
+        public async Task<IActionResult> SelectExistingGroupAsParent(int childGroupID, string? search)
+        {
+            ViewBag.ChildGroupID = childGroupID;
+            ViewBag.SearchText = search;
+
+            if (string.IsNullOrEmpty(search))
+            {
+                return View(new List<GroupWord>());
+            }
+
+            // Normalize the search string
+            search = NormalizeString(search);
+
+            // Get all groups except the current child group
+            var groupsQuery = _context.Groups
+                .Where(g => g.ID != childGroupID)
+                .ToList();
+
+            // Apply contains search
+            var filteredGroups = groupsQuery
+                .Where(g => NormalizeString(g.Name).Contains(search))
+                .ToList();
+
+            return View(filteredGroups);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddExistingGroupAsParent(int childGroupID, int parentGroupID)
+        {
+            // Check if relation already exists
+            var existingRelation = await _context.GroupRelations
+                .FirstOrDefaultAsync(gr => gr.ParentGroupID == parentGroupID && gr.RelatedGroupID == childGroupID);
+
+            if (existingRelation != null)
+            {
+                TempData["Error"] = "This group relation already exists.";
+                return RedirectToAction("Details", new { id = childGroupID });
+            }
+
+            // Create the GroupRelation
+            var groupRelation = new GroupRelation
+            {
+                ParentGroupID = parentGroupID,
+                RelatedGroupID = childGroupID,
+                IsCompound = false // You can add a parameter for this if needed
+            };
+
+            _context.GroupRelations.Add(groupRelation);
+            await _context.SaveChangesAsync();
+
+            TempData["Message"] = "Group relation created successfully.";
+            return RedirectToAction("Details", new { id = childGroupID });
+        }
+
     }
 }
