@@ -208,6 +208,8 @@ namespace CopticDictionarynew1.Controllers
         // GET: GroupWords/Create
         public IActionResult Create()
         {
+            ViewBag.Languages = new SelectList(GetLanguagesList(), "Value", "Text");
+
             return View();
         }
 
@@ -224,6 +226,7 @@ namespace CopticDictionarynew1.Controllers
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+            ViewBag.Languages = new SelectList(GetLanguagesList(), "Value", "Text");
             return View(groupWord);
         }
 
@@ -538,72 +541,72 @@ namespace CopticDictionarynew1.Controllers
 
 
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateWordForGroup(int groupId, [Bind("Word_text,Language,Class,notes,IPA,Pronunciation,IsDrevWord,RootID")] Word word)
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> CreateWordForGroup(int groupId, [Bind("Word_text,Language,Class,notes,IPA,Pronunciation,IsDrevWord,RootID")] Word word)
+{
+    if (ModelState.IsValid)
+    {
+        // Handle null values for foreign keys
+        if (word.RootID == 0) word.RootID = null;
+        
+        // Validate that if RootID is provided, it's a valid Coptic root word
+        if (word.RootID.HasValue)
         {
-            if (ModelState.IsValid)
+            var rootWord = await _context.Words.FindAsync(word.RootID.Value);
+            if (rootWord == null || rootWord.RootID != null || !rootWord.Language.StartsWith("C-"))
             {
-                // Handle null values for foreign keys
-                if (word.RootID == 0) word.RootID = null;
+                ModelState.AddModelError("RootID", "Invalid root word selected. Only Coptic root words are allowed.");
+            }
+        }
+        
+        if (ModelState.IsValid)
+        {
+            // Set the GroupID to the current group
+            word.GroupID = groupId;
 
-                // Validate that if RootID is provided, it's a valid Coptic root word
-                if (word.RootID.HasValue)
-                {
-                    var rootWord = await _context.Words.FindAsync(word.RootID.Value);
-                    if (rootWord == null || rootWord.RootID != null || !rootWord.Language.StartsWith("C-"))
-                    {
-                        ModelState.AddModelError("RootID", "Invalid root word selected. Only Coptic root words are allowed.");
-                    }
-                }
+            _context.Add(word);
+            await _context.SaveChangesAsync();
 
-                if (ModelState.IsValid)
-                {
-                    // Set the GroupID to the current group
-                    word.GroupID = groupId;
+            TempData["Message"] = $"Word '{word.Word_text}' has been created and added to the group successfully.";
 
-                    _context.Add(word);
-                    await _context.SaveChangesAsync();
-
-                    TempData["Message"] = $"Word '{word.Word_text}' has been created and added to the group successfully.";
-
-                    // Redirect back to group details
-                    var returnUrl = TempData["ReturnUrl"] as string;
-                    if (!string.IsNullOrEmpty(returnUrl))
-                    {
-                        return Redirect(returnUrl);
-                    }
-
-                    return RedirectToAction("Details", new { id = groupId });
-                }
+            // Redirect back to group details
+            var returnUrl = TempData["ReturnUrl"] as string;
+            if (!string.IsNullOrEmpty(returnUrl))
+            {
+                return Redirect(returnUrl);
             }
 
-            // Repopulate dropdowns if validation fails - ONLY Coptic root words
-            var group = await _context.Groups.FindAsync(groupId);
-            ViewBag.GroupName = group?.Name ?? "Unknown Group";
-            ViewBag.GroupId = groupId;
-            ViewBag.GroupOrigin = group?.OriginLanguage;
-            ViewBag.GroupEtymology = group?.EtymologyWord;
-            ViewBag.GroupNotes = group?.Notes;
-            ViewBag.GroupWordCount = _context.Words.Count(w => w.GroupID == groupId);
-
-            var roots = _context.Words
-                .Where(w => w.RootID == null && w.Language.StartsWith("C-")) // Only Coptic root words
-                .Select(w => new {
-                    WordId = (int?)w.WordId,
-                    DisplayField = w.Word_text + " (" + w.Language + ", " + w.Class + ")"
-                }).ToList();
-            roots.Insert(0, new { WordId = (int?)null, DisplayField = "No Root" });
-            ViewData["RootID"] = new SelectList(roots, "WordId", "DisplayField", word.RootID);
-
-            ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text", word.Language);
-            ViewData["Class"] = new SelectList(GetPartOfSpeechList(), "Value", "Text", word.Class);
-
-            return View(word);
+            return RedirectToAction("Details", new { id = groupId });
         }
+    }
 
-        // KEEP THIS METHOD (it's correct):
-        [HttpPost]
+    // Repopulate dropdowns if validation fails - ONLY Coptic root words
+    var group = await _context.Groups.FindAsync(groupId);
+    ViewBag.GroupName = group?.Name ?? "Unknown Group";
+    ViewBag.GroupId = groupId;
+    ViewBag.GroupOrigin = group?.OriginLanguage;
+    ViewBag.GroupEtymology = group?.EtymologyWord;
+    ViewBag.GroupNotes = group?.Notes;
+    ViewBag.GroupWordCount = _context.Words.Count(w => w.GroupID == groupId);
+
+    var roots = _context.Words
+        .Where(w => w.RootID == null && w.Language.StartsWith("C-")) // Only Coptic root words
+        .Select(w => new {
+            WordId = (int?)w.WordId,
+            DisplayField = w.Word_text + " (" + w.Language + ", " + w.Class + ")"
+        }).ToList();
+    roots.Insert(0, new { WordId = (int?)null, DisplayField = "No Root" });
+    ViewData["RootID"] = new SelectList(roots, "WordId", "DisplayField", word.RootID);
+
+    ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text", word.Language);
+    ViewData["Class"] = new SelectList(GetPartOfSpeechList(), "Value", "Text", word.Class);
+
+    return View(word);
+}
+
+// KEEP THIS METHOD (it's correct):
+[HttpPost]
 [ValidateAntiForgeryToken]
 public async Task<IActionResult> AddWordToGroup(int wordId, int groupId)
 {
