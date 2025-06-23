@@ -539,54 +539,71 @@ namespace CopticDictionarynew1.Controllers
 
 
         [HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> CreateWordForGroup(int groupId, [Bind("Word_text,Language,Class,notes,IPA,Pronunciation,IsDrevWord,RootID")] Word word)
-{
-    if (ModelState.IsValid)
-    {
-        // Handle null values for foreign keys
-        if (word.RootID == 0) word.RootID = null;
-        
-        // Set the GroupID to the current group
-        word.GroupID = groupId;
-
-        _context.Add(word);
-        await _context.SaveChangesAsync();
-
-        TempData["Message"] = $"Word '{word.Word_text}' has been created and added to the group successfully.";
-
-        // Redirect back to group details
-        var returnUrl = TempData["ReturnUrl"] as string;
-        if (!string.IsNullOrEmpty(returnUrl))
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateWordForGroup(int groupId, [Bind("Word_text,Language,Class,notes,IPA,Pronunciation,IsDrevWord,RootID")] Word word)
         {
-            return Redirect(returnUrl);
+            if (ModelState.IsValid)
+            {
+                // Handle null values for foreign keys
+                if (word.RootID == 0) word.RootID = null;
+
+                // Validate that if RootID is provided, it's a valid Coptic root word
+                if (word.RootID.HasValue)
+                {
+                    var rootWord = await _context.Words.FindAsync(word.RootID.Value);
+                    if (rootWord == null || rootWord.RootID != null || !rootWord.Language.StartsWith("C-"))
+                    {
+                        ModelState.AddModelError("RootID", "Invalid root word selected. Only Coptic root words are allowed.");
+                    }
+                }
+
+                if (ModelState.IsValid)
+                {
+                    // Set the GroupID to the current group
+                    word.GroupID = groupId;
+
+                    _context.Add(word);
+                    await _context.SaveChangesAsync();
+
+                    TempData["Message"] = $"Word '{word.Word_text}' has been created and added to the group successfully.";
+
+                    // Redirect back to group details
+                    var returnUrl = TempData["ReturnUrl"] as string;
+                    if (!string.IsNullOrEmpty(returnUrl))
+                    {
+                        return Redirect(returnUrl);
+                    }
+
+                    return RedirectToAction("Details", new { id = groupId });
+                }
+            }
+
+            // Repopulate dropdowns if validation fails - ONLY Coptic root words
+            var group = await _context.Groups.FindAsync(groupId);
+            ViewBag.GroupName = group?.Name ?? "Unknown Group";
+            ViewBag.GroupId = groupId;
+            ViewBag.GroupOrigin = group?.OriginLanguage;
+            ViewBag.GroupEtymology = group?.EtymologyWord;
+            ViewBag.GroupNotes = group?.Notes;
+            ViewBag.GroupWordCount = _context.Words.Count(w => w.GroupID == groupId);
+
+            var roots = _context.Words
+                .Where(w => w.RootID == null && w.Language.StartsWith("C-")) // Only Coptic root words
+                .Select(w => new {
+                    WordId = (int?)w.WordId,
+                    DisplayField = w.Word_text + " (" + w.Language + ", " + w.Class + ")"
+                }).ToList();
+            roots.Insert(0, new { WordId = (int?)null, DisplayField = "No Root" });
+            ViewData["RootID"] = new SelectList(roots, "WordId", "DisplayField", word.RootID);
+
+            ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text", word.Language);
+            ViewData["Class"] = new SelectList(GetPartOfSpeechList(), "Value", "Text", word.Class);
+
+            return View(word);
         }
 
-        return RedirectToAction("Details", new { id = groupId });
-    }
-
-    // Repopulate dropdowns if validation fails
-    var group = _context.Groups.Find(groupId);
-    ViewBag.GroupName = group?.Name ?? "Unknown Group";
-    ViewBag.GroupId = groupId;
-
-    var roots = _context.Words
-        .Where(w => w.Language.StartsWith("C-"))
-        .Select(w => new {
-            WordId = (int?)w.WordId,
-            DisplayField = w.Word_text + " (" + w.Language + ", " + w.Class + ")"
-        }).ToList();
-    roots.Insert(0, new { WordId = (int?)null, DisplayField = "No Root" });
-    ViewData["RootID"] = new SelectList(roots, "WordId", "DisplayField", word.RootID);
-
-    ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text", word.Language);
-    ViewData["Class"] = new SelectList(GetPartOfSpeechList(), "Value", "Text", word.Class);
-
-    return View(word);
-}
-
-// KEEP THIS METHOD (it's correct):
-[HttpPost]
+        // KEEP THIS METHOD (it's correct):
+        [HttpPost]
 [ValidateAntiForgeryToken]
 public async Task<IActionResult> AddWordToGroup(int wordId, int groupId)
 {
@@ -1209,9 +1226,9 @@ public async Task<IActionResult> AddWordToGroup(int wordId, int groupId)
             RootSearch = NormalizeString(RootSearch);
             ViewData["RootSearch"] = RootSearch;
 
-            // Populate RootID dropdown with search filter
+            // Populate RootID dropdown with search filter - ONLY Coptic words with RootID = null
             IEnumerable<Word> rootWordsQuery = _context.Words
-                .Where(w => w.RootID == null) // Only root words
+                .Where(w => w.RootID == null && w.Language.StartsWith("C-")) // Only Coptic root words
                 .AsEnumerable();
 
             if (!string.IsNullOrEmpty(RootSearch))
@@ -1235,38 +1252,37 @@ public async Task<IActionResult> AddWordToGroup(int wordId, int groupId)
             return View();
         }
 
-        // Add the SearchRoots method for AJAX calls
         [HttpGet]
-        public JsonResult SearchRoots(string searchTerm)
+public JsonResult SearchRoots(string searchTerm)
+{
+    if (string.IsNullOrEmpty(searchTerm) || searchTerm.Length < 2)
+    {
+        return Json(new List<object>());
+    }
+
+    // Normalize the search term
+    var normalizedSearch = NormalizeString(searchTerm);
+
+    // Fetch ONLY Coptic root words (Language starts with "C-" AND RootID is null)
+    var roots = _context.Words
+        .Where(w => w.RootID == null && w.Language.StartsWith("C-")) // Only Coptic root words
+        .AsEnumerable() // Switch to client-side evaluation for normalization
+        .Where(w => NormalizeString(w.Word_text).Contains(normalizedSearch))
+        .Select(w => new
         {
-            if (string.IsNullOrEmpty(searchTerm) || searchTerm.Length < 2)
-            {
-                return Json(new List<object>());
-            }
+            w.WordId,
+            DisplayField = w.Word_text + " (" + w.Language + ", " + w.Class + ")",
+            word_text = w.Word_text,
+            language = w.Language,
+            @class = w.Class,
+            notes = w.notes
+        })
+        .OrderBy(w => w.word_text)
+        .Take(20) // Limit results
+        .ToList();
 
-            // Normalize the search term
-            var normalizedSearch = NormalizeString(searchTerm);
-
-            // Fetch root words based on the search term
-            var roots = _context.Words
-                .Where(w => w.RootID == null) // Only root words
-                .AsEnumerable() // Switch to client-side evaluation for normalization
-                .Where(w => NormalizeString(w.Word_text).Contains(normalizedSearch))
-                .Select(w => new
-                {
-                    w.WordId,
-                    DisplayField = w.Word_text + " (" + w.Language + ", " + w.Class + ")",
-                    word_text = w.Word_text,
-                    language = w.Language,
-                    @class = w.Class,
-                    notes = w.notes
-                })
-                .OrderBy(w => w.word_text)
-                .Take(20) // Limit results
-                .ToList();
-
-            return Json(roots);
-        }
+    return Json(roots);
+}
 
         [HttpPost]
         [ValidateAntiForgeryToken]

@@ -48,15 +48,15 @@
                 <small class="form-text text-muted">This word will be added to the selected group</small>
             </div>
 
-            <!-- Root Search Section -->
+            <!-- Root Search Section - Update the label and help text -->
             <div class="form-group mb-3">
-                <label asp-for="RootID" class="control-label">Root</label>
+                <label asp-for="RootID" class="control-label">Root (Coptic Words Only)</label>
                 
                 <!-- Search Input -->
                 <div class="mb-2">
                     <div class="input-group">
                         <input type="text" id="rootSearchInput" class="form-control" 
-                               placeholder="Search for root words..." 
+                               placeholder="Search for Coptic root words (C-B, C-S, etc.)..." 
                                value="@ViewData["RootSearch"]" />
                         <button type="button" class="btn btn-outline-secondary" onclick="searchRoots()">
                             <i class="bi bi-search"></i> Search
@@ -65,6 +65,9 @@
                             <i class="bi bi-x-circle"></i> Clear
                         </button>
                     </div>
+                    <small class="form-text text-muted">
+                        <i class="bi bi-info-circle"></i> Only Coptic root words (Language starts with C-) that are not derived from other words will be shown
+                    </small>
                 </div>
 
                 <!-- Search Results -->
