@@ -1,77 +1,125 @@
-﻿@model List<GroupWord>
-
+﻿@model object
 @{
     ViewData["Title"] = "Select Existing Group as Child";
 }
 
-<h2>Select Existing Group as Child</h2>
+<h1>Select Existing Group as Child</h1>
+<h4>Parent Group: @ViewBag.ParentGroupName</h4>
+<hr />
 
-<form method="get">
-    <input type="hidden" name="parentGroupID" value="@ViewBag.ParentGroupID" />
-    <div class="form-group">
-        <label for="search">Search Groups:</label>
-        <div class="input-group">
-            <input type="text" class="form-control" id="search" name="search" value="@ViewBag.SearchText" placeholder="Enter group name to search..." />
-            <div class="input-group-append">
-                <button class="btn btn-primary" type="submit">Search</button>
+<!-- Search Form -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <form method="get">
+            <input type="hidden" name="parentGroupID" value="@ViewBag.ParentGroupID" />
+            <div class="input-group">
+                <input type="text" name="search" class="form-control" placeholder="Search groups by name or words..." value="@ViewBag.SearchText">
+                <button class="btn btn-outline-secondary" type="submit">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Available Groups -->
+@if (ViewBag.AvailableGroups != null && ((List<GroupWord>)ViewBag.AvailableGroups).Any())
+{
+    <div class="card">
+        <div class="card-header">
+            <h5>Available Groups (@((List<GroupWord>)ViewBag.AvailableGroups).Count)</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Group Name</th>
+                            <th>Origin Language</th>
+                            <th>Etymology Word</th>
+                            <th>Words Count</th>
+                            <th>Matching Words</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var availableGroup in (List<GroupWord>)ViewBag.AvailableGroups)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@availableGroup.Name</strong>
+                                    @if (!string.IsNullOrEmpty(availableGroup.Notes))
+                                    {
+                                        <br><small class="text-muted">@availableGroup.Notes</small>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(availableGroup.OriginLanguage))
+                                    {
+                                        <span class="badge bg-secondary">@availableGroup.OriginLanguage</span>
+                                    }
+                                </td>
+                                <td>@availableGroup.EtymologyWord</td>
+                                <td>
+                                    <span class="badge bg-info">@(availableGroup.Words?.Count ?? 0) words</span>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(ViewBag.SearchText as string) && availableGroup.Words != null)
+                                    {
+                                        var searchText = ViewBag.SearchText.ToString().ToLowerInvariant();
+                                        var matchingWords = availableGroup.Words
+                                            .Where(w => w.Word_text.ToLowerInvariant().Contains(searchText))
+                                            .Take(3)
+                                            .ToList();
+                                        
+                                        if (matchingWords.Any())
+                                        {
+                                            <small class="text-success">
+                                                @string.Join(", ", matchingWords.Select(w => w.Word_text))
+                                                @if (availableGroup.Words.Count(w => w.Word_text.ToLowerInvariant().Contains(searchText)) > 3)
+                                                {
+                                                    <text>... (+@(availableGroup.Words.Count(w => w.Word_text.ToLowerInvariant().Contains(searchText)) - 3) more)</text>
+                                                }
+                                            </small>
+                                        }
+                                    }
+                                </td>
+                                <td>
+                                    <form asp-action="AddExistingGroupAsChild" method="post" style="display:inline;">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="parentGroupID" value="@ViewBag.ParentGroupID" />
+                                        <input type="hidden" name="childGroupID" value="@availableGroup.ID" />
+                                        <button type="submit" class="btn btn-success btn-sm"
+                                                onclick="return confirm('Add @availableGroup.Name as child group?');">
+                                            <i class="bi bi-plus-circle"></i> Add as Child
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
-</form>
-
-@if (!string.IsNullOrEmpty(ViewBag.SearchText))
-{
-    @if (Model.Any())
-    {
-        <h4>Search Results:</h4>
-        <div class="table-responsive">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Origin Language</th>
-                        <th>Etymology Word</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var group in Model)
-                    {
-                        <tr>
-                            <td>@group.Name</td>
-                            <td>@group.OriginLanguage</td>
-                            <td>@group.EtymologyWord</td>
-                            <td>
-                                <form asp-action="AddExistingGroupAsChild" method="post" style="display:inline;">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="parentGroupID" value="@ViewBag.ParentGroupID" />
-                                    <input type="hidden" name="childGroupID" value="@group.ID" />
-                                    <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Are you sure you want to add this group as a child?');">
-                                        Select as Child
-                                    </button>
-                                </form>
-                                <a asp-action="Details" asp-route-id="@group.ID" class="btn btn-info btn-sm">View Details</a>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    }
-    else
-    {
-        <div class="alert alert-info">
-            No groups found matching "@ViewBag.SearchText"
-        </div>
-    }
 }
 else
 {
     <div class="alert alert-info">
-        Please enter a search term to find groups.
+        <i class="bi bi-info-circle"></i> 
+        @if (string.IsNullOrEmpty(ViewBag.SearchText as string))
+        {
+            <text>Please enter a search term to find groups.</text>
+        }
+        else
+        {
+            <text>No groups found matching your search criteria "@ViewBag.SearchText".</text>
+        }
     </div>
 }
 
-<div>
-    <a asp-action="Details" asp-route-id="@ViewBag.ParentGroupID" class="btn btn-secondary">Back to Group Details</a>
+<div class="mt-3">
+    <a asp-action="Details" asp-route-id="@ViewBag.ParentGroupID" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Group Details
+    </a>
 </div>

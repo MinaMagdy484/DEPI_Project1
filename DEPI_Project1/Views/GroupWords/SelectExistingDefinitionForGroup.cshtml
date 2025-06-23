@@ -1,0 +1,165 @@
+@model List<Meaning>
+@{
+    ViewData["Title"] = "Select Existing Definition for Group";
+}
+
+<h1>Add Existing Definition to Group</h1>
+<h4>Group: @ViewBag.GroupName</h4>
+
+<div class="row">
+    <div class="col-md-12">
+        <form method="get" class="mb-4">
+            <input type="hidden" name="groupId" value="@ViewBag.GroupId" />
+            <div class="input-group">
+                <input type="text" name="search" value="@ViewBag.SearchText" 
+                       class="form-control" placeholder="Search definitions by text or related words..." />
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+            <small class="form-text text-muted">
+                Search will match definition text and words that already have this definition.
+            </small>
+        </form>
+
+        @if (!string.IsNullOrEmpty(ViewBag.SearchText))
+        {
+            @if (Model.Any())
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Search Results (@Model.Count definitions found)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40%;">Definition</th>
+                                        <th style="width: 15%;">Language</th>
+                                        <th style="width: 30%;">Related Words</th>
+                                        <th style="width: 10%;">Notes</th>
+                                        <th style="width: 5%;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var meaning in Model)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="definition-text">
+                                                    @if (meaning.MeaningText.Length > 100)
+                                                    {
+                                                        <span title="@meaning.MeaningText">
+                                                            @meaning.MeaningText.Substring(0, 100)...
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        @meaning.MeaningText
+                                                    }
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info">@meaning.Language</span>
+                                            </td>
+                                            <td>
+                                                @if (meaning.WordMeanings != null && meaning.WordMeanings.Any())
+                                                {
+                                                    <div class="related-words">
+                                                        @{
+                                                            var words = meaning.WordMeanings.Take(3).Select(wm => wm.Word?.Word_text).Where(w => !string.IsNullOrEmpty(w));
+                                                            var wordCount = meaning.WordMeanings.Count();
+                                                        }
+                                                        @foreach (var word in words)
+                                                        {
+                                                            <span class="badge bg-secondary me-1">@word</span>
+                                                        }
+                                                        @if (wordCount > 3)
+                                                        {
+                                                            <small class="text-muted">... and @(wordCount - 3) more</small>
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">No words linked</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(meaning.Notes))
+                                                {
+                                                    <small title="@meaning.Notes">
+                                                        @if (meaning.Notes.Length > 30)
+                                                        {
+                                                            @meaning.Notes.Substring(0, 30);
+                                                        }
+                                                        else
+                                                        {
+                                                            @meaning.Notes
+                                                        }
+                                                    </small>
+                                                }
+                                            </td>
+                                            <td>
+                                                <form asp-action="AddExistingDefinitionToGroup" method="post" style="display:inline;">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="meaningId" value="@meaning.ID" />
+                                                    <input type="hidden" name="groupId" value="@ViewBag.GroupId" />
+                                                    <button type="submit" class="btn btn-success btn-sm"
+                                                            onclick="return confirm('Add this definition to all words in the group?');"
+                                                            title="Add to group">
+                                                        <i class="bi bi-plus-circle"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> No definitions found matching "@ViewBag.SearchText".
+                    <br>
+                    <small>Try searching for definition text or words that have definitions.</small>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="alert alert-secondary">
+                <i class="bi bi-search"></i> Enter a search term to find existing definitions.
+                <br>
+                <small>You can search by definition text or by words that already have definitions.</small>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="mt-4">
+    <a asp-action="Details" asp-route-id="@ViewBag.GroupId" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Group
+    </a>
+    <a asp-action="AddDefinitionToAllWords" asp-route-groupId="@ViewBag.GroupId" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Create New Definition
+    </a>
+</div>
+
+<style>
+    .definition-text {
+        line-height: 1.4;
+    }
+    
+    .related-words .badge {
+        font-size: 0.75em;
+    }
+    
+    .table td {
+        vertical-align: middle;
+    }
+</style>

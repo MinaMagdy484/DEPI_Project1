@@ -357,13 +357,13 @@
                     <h5 class="mb-0">Definition</h5>
                     <!-- Add the Remove Definition button here -->
                     <form asp-action="DeleteWM" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to remove this definition from this word? This will not delete the definition itself, only remove it from this word.');">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@word_meaning.ID" />
-                        <input type="hidden" name="wordId" value="@Model.WordId" />
-                        <button type="submit" class="btn btn-outline-warning btn-sm" title="Remove this definition from this word">
-                            <i class="bi bi-unlink"></i> Remove Definition
-                        </button>
-                    </form>
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" value="@word_meaning.ID" />
+    <input type="hidden" name="wordId" value="@Model.WordId" />
+    <button type="submit" class="btn btn-outline-warning btn-sm" title="Remove this definition from this word">
+        <i class="bi bi-unlink"></i> Remove Definition
+    </button>
+</form>
                 </div>
                 <div class="card-body">
                     <table class="table table-bordered">
@@ -600,12 +600,19 @@
                 <div class="mt-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h3>Related Words by Language</h3>
-                        <a asp-action="SelectWordForMeaning"
-                           asp-route-meaningId="@word_meaning.MeaningID"
-                           asp-route-currentWordId="@Model.WordId"
-                           class="btn btn-success btn-sm">
-                            <i class="bi bi-plus-circle"></i> Add Existing Word
-                        </a>
+                         <div class="btn-group">
+        <a asp-action="CreateWordAddedToMeaning"
+           asp-route-meaningId="@word_meaning.MeaningID"
+           class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-circle"></i> Create New Word
+        </a>
+        <a asp-action="SelectWordForMeaning"
+           asp-route-meaningId="@word_meaning.MeaningID"
+           asp-route-currentWordId="@Model.WordId"
+           class="btn btn-success btn-sm">
+            <i class="bi bi-plus-circle"></i> Add Existing Word
+        </a>
+    </div>
                     </div>
                     @{
                         var groupedWords = word_meaning.Meaning.WordMeanings
