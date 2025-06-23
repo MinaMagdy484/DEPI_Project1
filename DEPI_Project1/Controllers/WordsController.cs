@@ -274,77 +274,163 @@ namespace CopticDictionarynew1.Controllers
         //    return View();
         //}
 
-        public IActionResult SelectFromMeaning(int wordId)
+        //public IActionResult SelectFromMeaning(int wordId)
+        //{
+        //    // Retrieve meanings with related WordMeanings and Word
+        //    var meanings = _context.Meanings
+        //        .Include(m => m.WordMeanings)
+        //        .ThenInclude(wm => wm.Word)
+        //        .ToList();
+
+        //    // Create a list of SelectListItem with formatted text
+        //    var selectListItems = meanings.Select(m => new SelectListItem
+        //    {
+        //        Value = m.ID.ToString(),
+        //        Text = $"{m.MeaningText} ({m.Language}) - [{string.Join(", ", m.WordMeanings.Select(wm => $"{wm.Word.Word_text} ({wm.Word.Language})"))}]"
+        //    }).ToList();
+
+        //    ViewBag.Meanings = new SelectList(selectListItems, "Value", "Text");
+        //    ViewBag.WordId = wordId;
+        //    return View();
+        //}
+
+        //[HttpPost]
+        //[ValidateAntiForgeryToken]
+        //public async Task<IActionResult> SelectFromMeaning(int wordId, int meaningID)
+        //{
+        //    // Check if the word exists
+        //    var wordExists = await _context.Words.AnyAsync(w => w.WordId == wordId);
+        //    if (!wordExists)
+        //    {
+        //        ModelState.AddModelError("", "The selected word does not exist.");
+        //        return View();
+        //    }
+
+        //    // Check if this word-meaning relationship already exists
+        //    var existingRelationship = await _context.WordMeanings
+        //        .AnyAsync(wm => wm.WordID == wordId && wm.MeaningID == meaningID);
+
+        //    if (existingRelationship)
+        //    {
+        //        // If relationship exists, just redirect back to Details
+        //        return RedirectToAction("Details", new { id = wordId });
+        //    }
+
+        //    if (ModelState.IsValid)
+        //    {
+        //        // Create new word-meaning relationship only if it doesn't exist
+        //        WordMeaning wordMeaning = new WordMeaning
+        //        {
+        //            WordID = wordId,
+        //            MeaningID = meaningID
+        //        };
+
+        //        _context.WordMeanings.Add(wordMeaning);
+        //        await _context.SaveChangesAsync();
+        //        return RedirectToAction("Details", new { id = wordId });
+        //    }
+
+        //    // If we get here, something went wrong - repopulate the meanings dropdown
+        //    var meanings = await _context.Meanings
+        //        .Include(m => m.WordMeanings)
+        //        .ThenInclude(wm => wm.Word)
+        //        .ToListAsync();
+
+        //    var selectListItems = meanings.Select(m => new SelectListItem
+        //    {
+        //        Value = m.ID.ToString(),
+        //        Text = $"{m.MeaningText} ({m.Language}) - [{string.Join(", ", m.WordMeanings.Select(wm => $"{wm.Word.Word_text} ({wm.Word.Language})"))}]"
+        //    }).ToList();
+
+        //    ViewBag.Meanings = new SelectList(selectListItems, "Value", "Text");
+        //    ViewBag.WordId = wordId;
+        //    return View();
+        //}
+
+        public async Task<IActionResult> SelectFromMeaning(int wordId, string search = "")
         {
-            // Retrieve meanings with related WordMeanings and Word
-            var meanings = _context.Meanings
-                .Include(m => m.WordMeanings)
-                .ThenInclude(wm => wm.Word)
-                .ToList();
-
-            // Create a list of SelectListItem with formatted text
-            var selectListItems = meanings.Select(m => new SelectListItem
-            {
-                Value = m.ID.ToString(),
-                Text = $"{m.MeaningText} ({m.Language}) - [{string.Join(", ", m.WordMeanings.Select(wm => $"{wm.Word.Word_text} ({wm.Word.Language})"))}]"
-            }).ToList();
-
-            ViewBag.Meanings = new SelectList(selectListItems, "Value", "Text");
-            ViewBag.WordId = wordId;
-            return View();
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SelectFromMeaning(int wordId, int meaningID)
-        {
-            // Check if the word exists
+            // Check if the word exists in the database before proceeding
             var wordExists = await _context.Words.AnyAsync(w => w.WordId == wordId);
             if (!wordExists)
             {
-                ModelState.AddModelError("", "The selected word does not exist.");
+                return NotFound($"Word with ID {wordId} not found.");
+            }
+
+            // Get the word name for display
+            var word = await _context.Words.FindAsync(wordId);
+            ViewBag.WordId = wordId;
+            ViewBag.WordText = word?.Word_text ?? "Unknown Word";
+            ViewBag.SearchText = search;
+
+            if (string.IsNullOrEmpty(search))
+            {
+                ViewBag.AvailableMeanings = new List<Meaning>();
                 return View();
             }
 
-            // Check if this word-meaning relationship already exists
-            var existingRelationship = await _context.WordMeanings
-                .AnyAsync(wm => wm.WordID == wordId && wm.MeaningID == meaningID);
+            // Normalize the search string
+            search = NormalizeString(search);
 
-            if (existingRelationship)
-            {
-                // If relationship exists, just redirect back to Details
-                return RedirectToAction("Details", new { id = wordId });
-            }
+            // Get existing meaning IDs for this word to exclude them (optional)
+            var existingMeaningIds = await _context.WordMeanings
+                .Where(wm => wm.WordID == wordId)
+                .Select(wm => wm.MeaningID)
+                .ToListAsync();
 
-            if (ModelState.IsValid)
-            {
-                // Create new word-meaning relationship only if it doesn't exist
-                WordMeaning wordMeaning = new WordMeaning
-                {
-                    WordID = wordId,
-                    MeaningID = meaningID
-                };
-
-                _context.WordMeanings.Add(wordMeaning);
-                await _context.SaveChangesAsync();
-                return RedirectToAction("Details", new { id = wordId });
-            }
-
-            // If we get here, something went wrong - repopulate the meanings dropdown
-            var meanings = await _context.Meanings
+            // Get all parent meanings with their associated words
+            var allMeanings = await _context.Meanings
+                .Where(m => m.ParentMeaningID == null) // Only parent meanings (where ParentMeaningID is null)
                 .Include(m => m.WordMeanings)
                 .ThenInclude(wm => wm.Word)
                 .ToListAsync();
 
-            var selectListItems = meanings.Select(m => new SelectListItem
-            {
-                Value = m.ID.ToString(),
-                Text = $"{m.MeaningText} ({m.Language}) - [{string.Join(", ", m.WordMeanings.Select(wm => $"{wm.Word.Word_text} ({wm.Word.Language})"))}]"
-            }).ToList();
+            // Filter meanings based on search criteria (meaning text OR words associated with the meaning)
+            var filteredMeanings = allMeanings
+                .Where(m =>
+                    // Search in meaning text
+                    NormalizeString(m.MeaningText ?? "").Contains(search) ||
+                    // Search in words associated with this meaning
+                    (m.WordMeanings != null && m.WordMeanings.Any(wm =>
+                        wm.Word != null && NormalizeString(wm.Word.Word_text ?? "").Contains(search)))
+                )
+                .OrderBy(m => m.MeaningText)
+                .ToList();
 
-            ViewBag.Meanings = new SelectList(selectListItems, "Value", "Text");
-            ViewBag.WordId = wordId;
+            ViewBag.AvailableMeanings = filteredMeanings;
             return View();
+        }
+
+        // POST method to handle the form submission
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddMeaningToWord(int wordId, int meaningId)
+        {
+            // Check if relation already exists
+            var existingRelation = await _context.WordMeanings
+                .FirstOrDefaultAsync(wm => wm.WordID == wordId && wm.MeaningID == meaningId);
+
+            if (existingRelation != null)
+            {
+                TempData["Warning"] = "This word is already linked to the selected meaning.";
+                return RedirectToAction("Details", new { id = wordId });
+            }
+
+            var newWordMeaning = new WordMeaning
+            {
+                WordID = wordId,
+                MeaningID = meaningId
+            };
+
+            _context.WordMeanings.Add(newWordMeaning);
+            await _context.SaveChangesAsync();
+
+            var meaning = await _context.Meanings.FindAsync(meaningId);
+            var meaningText = meaning?.MeaningText ?? "";
+            var truncatedText = meaningText.Length > 50 ? meaningText.Substring(0, 50) + "..." : meaningText;
+
+            TempData["Message"] = $"Meaning '{truncatedText}' has been linked to the word successfully.";
+
+            return RedirectToAction("Details", new { id = wordId });
         }
 
 
