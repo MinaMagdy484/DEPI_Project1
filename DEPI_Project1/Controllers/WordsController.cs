@@ -1849,21 +1849,32 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
 
                 if (bibleVerseId != 0) // 0 means no verse was found
                 {
-                    // Create and save the WordMeaningBible
-                    var wordMeaningBible = new WordMeaningBible
-                    {
-                        WordMeaningID = wordMeaningId,
-                        BibleID = bibleVerseId
-                    };
+                    // Check if this reference already exists
+                    var existingReference = await _context.WordMeaningBibles
+                        .FirstOrDefaultAsync(wmb => wmb.WordMeaningID == wordMeaningId && wmb.BibleID == bibleVerseId);
 
-                    _context.WordMeaningBibles.Add(wordMeaningBible);
-                    await _context.SaveChangesAsync();
-
-                    // Redirect to the original page
-                    var returnUrl = TempData["ReturnUrl"] as string;
-                    if (!string.IsNullOrEmpty(returnUrl))
+                    if (existingReference == null)
                     {
-                        return Redirect(returnUrl);
+                        // Create and save the WordMeaningBible
+                        var wordMeaningBible = new WordMeaningBible
+                        {
+                            WordMeaningID = wordMeaningId,
+                            BibleID = bibleVerseId
+                        };
+
+                        _context.WordMeaningBibles.Add(wordMeaningBible);
+                        await _context.SaveChangesAsync();
+
+                        // Redirect to the original page
+                        var returnUrl = TempData["ReturnUrl"] as string;
+                        if (!string.IsNullOrEmpty(returnUrl))
+                        {
+                            return Redirect(returnUrl);
+                        }
+                    }
+                    else
+                    {
+                        ModelState.AddModelError("", "This Bible reference already exists for this word meaning.");
                     }
                 }
                 else
@@ -1882,6 +1893,7 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
             return View();
         }
 
+     
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -3066,7 +3078,88 @@ public async Task<IActionResult> CreateWordAddedToMeaning(int meaningId, [Bind("
             };
         }
 
-      
+        // API endpoint to get available editions based on book and language
+        [HttpGet]
+        public async Task<JsonResult> GetAvailableEditions(int? bookNumber, string language)
+        {
+            try
+            {
+                var query = _context.Bibles.AsQueryable();
+
+                // Filter by book if provided
+                if (bookNumber.HasValue && bookNumber.Value > 0)
+                {
+                    query = query.Where(b => b.Book == bookNumber.Value);
+                }
+
+                // Filter by language if provided
+                if (!string.IsNullOrEmpty(language))
+                {
+                    query = query.Where(b => b.Language == language);
+                }
+
+                // Get distinct editions
+                var editions = await query
+                    .Select(b => b.Edition)
+                    .Distinct()
+                    .Where(e => !string.IsNullOrEmpty(e))
+                    .OrderBy(e => e)
+                    .ToListAsync();
+
+                return Json(new { success = true, editions = editions });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
+
+        // API endpoint to get available chapters for a specific book, language, and edition
+        [HttpGet]
+        public async Task<JsonResult> GetAvailableChapters(int bookNumber, string language, string edition)
+        {
+            try
+            {
+                var chapters = await _context.Bibles
+                    .Where(b => b.Book == bookNumber
+                               && b.Language == language
+                               && b.Edition == edition)
+                    .Select(b => b.Chapter)
+                    .Distinct()
+                    .OrderBy(c => c)
+                    .ToListAsync();
+
+                return Json(new { success = true, chapters = chapters });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
+
+        // API endpoint to get available verses for a specific book, chapter, language, and edition
+        [HttpGet]
+        public async Task<JsonResult> GetAvailableVerses(int bookNumber, int chapter, string language, string edition)
+        {
+            try
+            {
+                var verses = await _context.Bibles
+                    .Where(b => b.Book == bookNumber
+                               && b.Chapter == chapter
+                               && b.Language == language
+                               && b.Edition == edition)
+                    .Select(b => b.Verse)
+                    .Distinct()
+                    .OrderBy(v => v)
+                    .ToListAsync();
+
+                return Json(new { success = true, verses = verses });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
 
 
     }
