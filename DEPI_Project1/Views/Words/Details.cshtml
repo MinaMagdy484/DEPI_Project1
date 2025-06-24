@@ -311,6 +311,105 @@
     </tbody>
 </table>
 
+<!-- Add this section after the Explanations table and before the Definitions section -->
+<!-- Dictionary References Section -->
+<h3 class="mt-4">Dictionary References</h3>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <p class="mb-0">References to this word in various dictionaries</p>
+    <a asp-action="AddDictionaryReference" asp-route-wordId="@Model.WordId" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-circle"></i> Add Dictionary Reference
+    </a>
+</div>
+
+@if (Model.DictionaryReferenceWords != null && Model.DictionaryReferenceWords.Any())
+{
+    <div class="table-responsive">
+        <table class="table table-hover table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Dictionary</th>
+                    <th>Abbreviation</th>
+                    <th>Reference (Page)</th>
+                    <th>Column</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var dictRef in Model.DictionaryReferenceWords.OrderBy(dr => dr.Dictionary.DictionaryName))
+                {
+                    <tr>
+                        <td>
+                            <strong>@dictRef.Dictionary.DictionaryName</strong>
+                            @if (!string.IsNullOrEmpty(dictRef.Dictionary.Detils))
+                            {
+                                <br>
+
+                                <small class="text-muted">@dictRef.Dictionary.Detils</small>
+                            }
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(dictRef.Dictionary.Abbreviation))
+                            {
+                                <span class="badge bg-secondary">@dictRef.Dictionary.Abbreviation</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+                        <td>
+                            <span class="fw-bold">@dictRef.Reference</span>
+                            @if (dictRef.Dictionary.MaxNumberOfPages.HasValue)
+                            {
+                                <small class="text-muted">/ @dictRef.Dictionary.MaxNumberOfPages</small>
+                            }
+                        </td>
+                        <td>
+                            @if (dictRef.Column != '\0')
+                            {
+                                <span class="badge bg-info">@dictRef.Column</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a asp-action="EditDictionaryReference"
+                                   asp-route-id="@dictRef.ID"
+                                   class="btn btn-outline-primary btn-sm"
+                                   title="Edit Reference">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                <form asp-action="DeleteDictionaryReference"
+                                      method="post"
+                                      style="display:inline;"
+                                      onsubmit="return confirm('Are you sure you want to delete this dictionary reference?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@dictRef.ID" />
+                                    <button type="submit"
+                                            class="btn btn-outline-danger btn-sm"
+                                            title="Delete Reference">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> No dictionary references have been added for this word yet.
+    </div>
+}
+
+<hr class="my-4">
 
 
 
