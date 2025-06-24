@@ -475,7 +475,7 @@ namespace CopticDictionarynew1.Controllers
 
             return View(wordMeaning);
         }
-//21/6/2025
+        //21/6/2025
         // POST: WordMeanings/DeleteConfirmed
         // [HttpPost, ActionName("DeleteWM")]
         // [ValidateAntiForgeryToken]
@@ -492,27 +492,27 @@ namespace CopticDictionarynew1.Controllers
         // }
         // ...existing code...
 
-[HttpPost, ActionName("DeleteWM")]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
-{
-    var wordMeaning = await _context.WordMeanings.FindAsync(id);
-    if (wordMeaning != null)
-    {
-        _context.WordMeanings.Remove(wordMeaning);
-        await _context.SaveChangesAsync();
-    }
+        [HttpPost, ActionName("DeleteWM")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
+        {
+            var wordMeaning = await _context.WordMeanings.FindAsync(id);
+            if (wordMeaning != null)
+            {
+                _context.WordMeanings.Remove(wordMeaning);
+                await _context.SaveChangesAsync();
+            }
 
-    // Redirect back to the word details page if wordId is provided
-    if (wordId.HasValue)
-    {
-        return RedirectToAction("Details", new { id = wordId });
-    }
-    
-    return RedirectToAction(nameof(Index));
-}
+            // Redirect back to the word details page if wordId is provided
+            if (wordId.HasValue)
+            {
+                return RedirectToAction("Details", new { id = wordId });
+            }
 
-// ...existing code...
+            return RedirectToAction(nameof(Index));
+        }
+
+        // ...existing code...
 
 
 
@@ -699,12 +699,12 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
                 };
         }
 
-    private string GetLanguageDisplayName(string languageCode)
-{
-    var languagesList = GetLanguagesList();
-    var language = languagesList.FirstOrDefault(l => l.Value == languageCode);
-    return language?.Text ?? languageCode; // Return the display name or the code if not found
-}
+        private string GetLanguageDisplayName(string languageCode)
+        {
+            var languagesList = GetLanguagesList();
+            var language = languagesList.FirstOrDefault(l => l.Value == languageCode);
+            return language?.Text ?? languageCode; // Return the display name or the code if not found
+        }
         private List<SelectListItem> GetPartOfSpeechList()
         {
             return new List<SelectListItem>
@@ -815,7 +815,7 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
         //    }), "ID", "DisplayField");
 
         //    // Change rootWordsQuery to IEnumerable<Word>
-          
+
 
         //    // Populate the root list for the dropdown
         //    ViewData["RootID"] = new SelectList(rootWordsQuery.Select(w => new
@@ -901,7 +901,7 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
 
 
 
-        
+
         [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
@@ -1385,13 +1385,14 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
 
                 // Redirect back to the Word details page
                 var returnUrl = TempData["ReturnUrl"] as string;
-                          if (!string.IsNullOrEmpty(returnUrl))
-                           {
-                               return Redirect(returnUrl); // redirect to the original page
-                            }            }
+                if (!string.IsNullOrEmpty(returnUrl))
+                {
+                    return Redirect(returnUrl); // redirect to the original page
+                }
+            }
 
-                // If the model state is invalid, pass the WordMeaningId, WordId, and Language again
-                ViewBag.WordMeaningId = example.WordMeaningID;
+            // If the model state is invalid, pass the WordMeaningId, WordId, and Language again
+            ViewBag.WordMeaningId = example.WordMeaningID;
             ViewBag.WordId = example.WordMeaning?.WordID; // Assuming WordMeaning has a WordID property
             ViewBag.Language = example.Language;
             ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text");
@@ -1532,7 +1533,7 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
 
 
 
-        
+
         public IActionResult CreateDerivedWord(int WordID)
         {
             TempData["ReturnUrl"] = Request.Headers["Referer"].ToString();
@@ -1819,17 +1820,31 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
         //    ViewBag.WordMeaningId = wordMeaningId; // Pass the WordMeaningId again if the form is invalid
         //    return View();
         //}
-        public IActionResult CreateBibleReference(int wordMeaningId)
-        {
-            TempData["ReturnUrl"] = Request.Headers["Referer"].ToString();
-            ViewBag.WordMeaningId = wordMeaningId; // Pass the WordMeaningId to the view
+public IActionResult CreateBibleReference(int wordMeaningId)
+{
+    TempData["ReturnUrl"] = Request.Headers["Referer"].ToString();
+    
+    // Get the word meaning with the associated word to extract the language
+    var wordMeaning = _context.WordMeanings
+        .Include(wm => wm.Word)
+        .FirstOrDefault(wm => wm.ID == wordMeaningId);
+    
+    if (wordMeaning == null)
+    {
+        return NotFound("Word meaning not found.");
+    }
+    
+    ViewBag.WordMeaningId = wordMeaningId;
+    ViewBag.WordLanguage = wordMeaning.Word.Language; // Pass the word's language
+    ViewBag.WordText = wordMeaning.Word.Word_text; // Optional: for display context
+    
+    // Add Bible books dropdown with full Arabic names
+    ViewBag.BibleBooks = GetBibleBooksSelectList("AR", includeFullNames: true);
+    ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text");
 
-            // Add Bible books dropdown with full Arabic names
-            ViewBag.BibleBooks = GetBibleBooksSelectList("AR", includeFullNames: true);
-            ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text");
+    return View();
+}
 
-            return View();
-        }
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateBibleReference(int wordMeaningId, int bookNumber, int chapter, int verse, string language, string Edition)
@@ -1893,7 +1908,7 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
             return View();
         }
 
-     
+
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -1911,7 +1926,7 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
         }
 
 
-        public IActionResult AddChildMeaning(int parentMeaningId , int wordId)
+        public IActionResult AddChildMeaning(int parentMeaningId, int wordId)
         {
             ViewBag.WordId = wordId;
             ViewBag.ParentMeaningId = parentMeaningId;
@@ -1996,7 +2011,7 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
 
 
 
-       
+
 
         public IActionResult CreateGroupAsChild(int parentGroupID, int wordId)
         {
@@ -2061,7 +2076,7 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
 
         // Action to handle form submission
         [HttpPost]
-        public async Task<IActionResult> CreateGroupAsParent(CreateGroupViewModel model , int wordId)
+        public async Task<IActionResult> CreateGroupAsParent(CreateGroupViewModel model, int wordId)
         {
             if (!ModelState.IsValid)
             {
@@ -2220,7 +2235,7 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddWordToGroup(int groupid , [Bind("WordId,Word_text,Language,Class,notes,IPA,Pronunciation,IsDrevWord,RootID,GroupID")] Word word)
+        public async Task<IActionResult> AddWordToGroup(int groupid, [Bind("WordId,Word_text,Language,Class,notes,IPA,Pronunciation,IsDrevWord,RootID,GroupID")] Word word)
         {
             if (ModelState.IsValid)
             {
@@ -2252,7 +2267,7 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
             return View(word);
         }
 
-        
+
 
         // GET: Words/AddDictionaryReference/5
         public IActionResult AddDictionaryReference(int wordId)
@@ -2777,112 +2792,112 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
 
         // ...existing code...
 
-// GET: CreateWordAddedToMeaning (For creating a new word and linking it to a specific meaning)
-public IActionResult CreateWordAddedToMeaning(int meaningId)
-{
-    TempData["ReturnUrl"] = Request.Headers["Referer"].ToString();
-
-    // Populate GroupID dropdown with "No Group" as an option
-    var groups = _context.Groups.Select(g => new {
-        ID = (int?)g.ID, // Convert to nullable int
-        DisplayField = g.Name + " (" + g.OriginLanguage + ", " + g.EtymologyWord + ")"
-    }).ToList();
-
-    groups.Insert(0, new { ID = (int?)null, DisplayField = "No Group" });
-    ViewData["GroupID"] = new SelectList(groups, "ID", "DisplayField");
-
-    // Populate RootID dropdown with "No Root" as an option (Only words that start with "C-")
-    var roots = _context.Words
-        .Where(w => w.Language.StartsWith("C-"))
-        .Select(w => new {
-            WordId = (int?)w.WordId, // Convert to nullable int
-            DisplayField = w.Word_text + " (" + w.Language + ", " + w.Class + ")"
-        }).ToList();
-
-    roots.Insert(0, new { WordId = (int?)null, DisplayField = "No Root" });
-    ViewData["RootID"] = new SelectList(roots, "WordId", "DisplayField");
-
-    // Populate Languages dropdown
-    ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text");
-    ViewData["Class"] = new SelectList(GetPartOfSpeechList(), "Value", "Text");
-
-    // Pass the MeaningId to the view
-    ViewBag.MeaningId = meaningId;
-
-    return View();
-}
-
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> CreateWordAddedToMeaning(int meaningId, [Bind("Word_text,Language,Class,notes,IPA,Pronunciation,IsDrevWord,IsReviewed,RootID,GroupID")] Word word)
-{
-    if (ModelState.IsValid)
-    {
-        // If GroupID or RootID is "No Group" or "No Root", set it to null
-        if (word.GroupID == 0)
+        // GET: CreateWordAddedToMeaning (For creating a new word and linking it to a specific meaning)
+        public IActionResult CreateWordAddedToMeaning(int meaningId)
         {
-            word.GroupID = null;
+            TempData["ReturnUrl"] = Request.Headers["Referer"].ToString();
+
+            // Populate GroupID dropdown with "No Group" as an option
+            var groups = _context.Groups.Select(g => new {
+                ID = (int?)g.ID, // Convert to nullable int
+                DisplayField = g.Name + " (" + g.OriginLanguage + ", " + g.EtymologyWord + ")"
+            }).ToList();
+
+            groups.Insert(0, new { ID = (int?)null, DisplayField = "No Group" });
+            ViewData["GroupID"] = new SelectList(groups, "ID", "DisplayField");
+
+            // Populate RootID dropdown with "No Root" as an option (Only words that start with "C-")
+            var roots = _context.Words
+                .Where(w => w.Language.StartsWith("C-"))
+                .Select(w => new {
+                    WordId = (int?)w.WordId, // Convert to nullable int
+                    DisplayField = w.Word_text + " (" + w.Language + ", " + w.Class + ")"
+                }).ToList();
+
+            roots.Insert(0, new { WordId = (int?)null, DisplayField = "No Root" });
+            ViewData["RootID"] = new SelectList(roots, "WordId", "DisplayField");
+
+            // Populate Languages dropdown
+            ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text");
+            ViewData["Class"] = new SelectList(GetPartOfSpeechList(), "Value", "Text");
+
+            // Pass the MeaningId to the view
+            ViewBag.MeaningId = meaningId;
+
+            return View();
         }
 
-        if (word.RootID == 0)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateWordAddedToMeaning(int meaningId, [Bind("Word_text,Language,Class,notes,IPA,Pronunciation,IsDrevWord,IsReviewed,RootID,GroupID")] Word word)
         {
-            word.RootID = null;
-        }
-
-        // First, add the word to the database
-        _context.Words.Add(word);
-        await _context.SaveChangesAsync();
-
-        // Ensure the Word has been successfully saved and has a valid ID
-        if (word.WordId > 0)
-        {
-            // Now, create the WordMeaning relationship and save it
-            WordMeaning wordMeaning = new WordMeaning
+            if (ModelState.IsValid)
             {
-                WordID = word.WordId,    // This is the newly created Word ID
-                MeaningID = meaningId    // This is the selected Meaning ID
-            };
+                // If GroupID or RootID is "No Group" or "No Root", set it to null
+                if (word.GroupID == 0)
+                {
+                    word.GroupID = null;
+                }
 
-            _context.WordMeanings.Add(wordMeaning);
-            await _context.SaveChangesAsync();
+                if (word.RootID == 0)
+                {
+                    word.RootID = null;
+                }
 
-            // Redirect back to the original page
-            var returnUrl = TempData["ReturnUrl"] as string;
-            if (!string.IsNullOrEmpty(returnUrl))
-            {
-                return Redirect(returnUrl); // Redirect to the original page
+                // First, add the word to the database
+                _context.Words.Add(word);
+                await _context.SaveChangesAsync();
+
+                // Ensure the Word has been successfully saved and has a valid ID
+                if (word.WordId > 0)
+                {
+                    // Now, create the WordMeaning relationship and save it
+                    WordMeaning wordMeaning = new WordMeaning
+                    {
+                        WordID = word.WordId,    // This is the newly created Word ID
+                        MeaningID = meaningId    // This is the selected Meaning ID
+                    };
+
+                    _context.WordMeanings.Add(wordMeaning);
+                    await _context.SaveChangesAsync();
+
+                    // Redirect back to the original page
+                    var returnUrl = TempData["ReturnUrl"] as string;
+                    if (!string.IsNullOrEmpty(returnUrl))
+                    {
+                        return Redirect(returnUrl); // Redirect to the original page
+                    }
+
+                    // Fallback: redirect to the new word's details page
+                    return RedirectToAction("Details", new { id = word.WordId });
+                }
             }
-            
-            // Fallback: redirect to the new word's details page
-            return RedirectToAction("Details", new { id = word.WordId });
+
+            // If form is invalid, pass MeaningId again and repopulate dropdowns
+            ViewBag.MeaningId = meaningId;
+
+            // Repopulate ViewData for dropdowns if form is invalid
+            var groups = _context.Groups.Select(g => new {
+                ID = (int?)g.ID,
+                DisplayField = g.Name + " (" + g.OriginLanguage + ", " + g.EtymologyWord + ")"
+            }).ToList();
+            groups.Insert(0, new { ID = (int?)null, DisplayField = "No Group" });
+            ViewData["GroupID"] = new SelectList(groups, "ID", "DisplayField");
+
+            var roots = _context.Words
+                .Where(w => w.Language.StartsWith("C-"))
+                .Select(w => new {
+                    WordId = (int?)w.WordId,
+                    DisplayField = w.Word_text + " (" + w.Language + ", " + w.Class + ")"
+                }).ToList();
+            roots.Insert(0, new { WordId = (int?)null, DisplayField = "No Root" });
+            ViewData["RootID"] = new SelectList(roots, "WordId", "DisplayField");
+
+            ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text");
+            ViewData["Class"] = new SelectList(GetPartOfSpeechList(), "Value", "Text");
+
+            return View(word);
         }
-    }
-
-    // If form is invalid, pass MeaningId again and repopulate dropdowns
-    ViewBag.MeaningId = meaningId;
-
-    // Repopulate ViewData for dropdowns if form is invalid
-    var groups = _context.Groups.Select(g => new {
-        ID = (int?)g.ID,
-        DisplayField = g.Name + " (" + g.OriginLanguage + ", " + g.EtymologyWord + ")"
-    }).ToList();
-    groups.Insert(0, new { ID = (int?)null, DisplayField = "No Group" });
-    ViewData["GroupID"] = new SelectList(groups, "ID", "DisplayField");
-
-    var roots = _context.Words
-        .Where(w => w.Language.StartsWith("C-"))
-        .Select(w => new {
-            WordId = (int?)w.WordId,
-            DisplayField = w.Word_text + " (" + w.Language + ", " + w.Class + ")"
-        }).ToList();
-    roots.Insert(0, new { WordId = (int?)null, DisplayField = "No Root" });
-    ViewData["RootID"] = new SelectList(roots, "WordId", "DisplayField");
-
-    ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text");
-    ViewData["Class"] = new SelectList(GetPartOfSpeechList(), "Value", "Text");
-
-    return View(word);
-}
 
         // ...existing code...
 

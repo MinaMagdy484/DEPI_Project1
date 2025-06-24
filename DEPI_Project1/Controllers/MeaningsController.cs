@@ -51,6 +51,10 @@ namespace CopticDictionarynew1.Controllers
             return View(await applicationDbContext.ToListAsync());
         }
 
+
+
+
+
         // GET: Meanings/Details/5
         public async Task<IActionResult> Details(int? id)
         {

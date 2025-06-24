@@ -173,7 +173,7 @@ namespace CopticDictionarynew1.Controllers
             if (groupWord.Words != null && groupWord.Words.Any())
             {
                 var wordsInGroup = groupWord.Words.ToList();
-                
+
                 // Get unique classes (parts of speech)
                 var uniqueClasses = wordsInGroup
                     .Where(w => !string.IsNullOrEmpty(w.Class))
@@ -541,90 +541,90 @@ namespace CopticDictionarynew1.Controllers
 
 
 
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> CreateWordForGroup(int groupId, [Bind("Word_text,Language,Class,notes,IPA,Pronunciation,IsDrevWord,RootID")] Word word)
-{
-    if (ModelState.IsValid)
-    {
-        // Handle null values for foreign keys
-        if (word.RootID == 0) word.RootID = null;
-        
-        // Validate that if RootID is provided, it's a valid Coptic root word
-        if (word.RootID.HasValue)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateWordForGroup(int groupId, [Bind("Word_text,Language,Class,notes,IPA,Pronunciation,IsDrevWord,RootID")] Word word)
         {
-            var rootWord = await _context.Words.FindAsync(word.RootID.Value);
-            if (rootWord == null || rootWord.RootID != null || !rootWord.Language.StartsWith("C-"))
+            if (ModelState.IsValid)
             {
-                ModelState.AddModelError("RootID", "Invalid root word selected. Only Coptic root words are allowed.");
-            }
-        }
-        
-        if (ModelState.IsValid)
-        {
-            // Set the GroupID to the current group
-            word.GroupID = groupId;
+                // Handle null values for foreign keys
+                if (word.RootID == 0) word.RootID = null;
 
-            _context.Add(word);
+                // Validate that if RootID is provided, it's a valid Coptic root word
+                if (word.RootID.HasValue)
+                {
+                    var rootWord = await _context.Words.FindAsync(word.RootID.Value);
+                    if (rootWord == null || rootWord.RootID != null || !rootWord.Language.StartsWith("C-"))
+                    {
+                        ModelState.AddModelError("RootID", "Invalid root word selected. Only Coptic root words are allowed.");
+                    }
+                }
+
+                if (ModelState.IsValid)
+                {
+                    // Set the GroupID to the current group
+                    word.GroupID = groupId;
+
+                    _context.Add(word);
+                    await _context.SaveChangesAsync();
+
+                    TempData["Message"] = $"Word '{word.Word_text}' has been created and added to the group successfully.";
+
+                    // Redirect back to group details
+                    var returnUrl = TempData["ReturnUrl"] as string;
+                    if (!string.IsNullOrEmpty(returnUrl))
+                    {
+                        return Redirect(returnUrl);
+                    }
+
+                    return RedirectToAction("Details", new { id = groupId });
+                }
+            }
+
+            // Repopulate dropdowns if validation fails - ONLY Coptic root words
+            var group = await _context.Groups.FindAsync(groupId);
+            ViewBag.GroupName = group?.Name ?? "Unknown Group";
+            ViewBag.GroupId = groupId;
+            ViewBag.GroupOrigin = group?.OriginLanguage;
+            ViewBag.GroupEtymology = group?.EtymologyWord;
+            ViewBag.GroupNotes = group?.Notes;
+            ViewBag.GroupWordCount = _context.Words.Count(w => w.GroupID == groupId);
+
+            var roots = _context.Words
+                .Where(w => w.RootID == null && w.Language.StartsWith("C-")) // Only Coptic root words
+                .Select(w => new {
+                    WordId = (int?)w.WordId,
+                    DisplayField = w.Word_text + " (" + w.Language + ", " + w.Class + ")"
+                }).ToList();
+            roots.Insert(0, new { WordId = (int?)null, DisplayField = "No Root" });
+            ViewData["RootID"] = new SelectList(roots, "WordId", "DisplayField", word.RootID);
+
+            ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text", word.Language);
+            ViewData["Class"] = new SelectList(GetPartOfSpeechList(), "Value", "Text", word.Class);
+
+            return View(word);
+        }
+
+        // KEEP THIS METHOD (it's correct):
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddWordToGroup(int wordId, int groupId)
+        {
+            var word = await _context.Words.FindAsync(wordId);
+            if (word == null)
+            {
+                TempData["Error"] = "Word not found.";
+                return RedirectToAction("Details", new { id = groupId });
+            }
+
+            // Update the word's GroupID
+            word.GroupID = groupId;
+            _context.Update(word);
             await _context.SaveChangesAsync();
 
-            TempData["Message"] = $"Word '{word.Word_text}' has been created and added to the group successfully.";
-
-            // Redirect back to group details
-            var returnUrl = TempData["ReturnUrl"] as string;
-            if (!string.IsNullOrEmpty(returnUrl))
-            {
-                return Redirect(returnUrl);
-            }
-
+            TempData["Message"] = $"Word '{word.Word_text}' has been added to the group successfully.";
             return RedirectToAction("Details", new { id = groupId });
         }
-    }
-
-    // Repopulate dropdowns if validation fails - ONLY Coptic root words
-    var group = await _context.Groups.FindAsync(groupId);
-    ViewBag.GroupName = group?.Name ?? "Unknown Group";
-    ViewBag.GroupId = groupId;
-    ViewBag.GroupOrigin = group?.OriginLanguage;
-    ViewBag.GroupEtymology = group?.EtymologyWord;
-    ViewBag.GroupNotes = group?.Notes;
-    ViewBag.GroupWordCount = _context.Words.Count(w => w.GroupID == groupId);
-
-    var roots = _context.Words
-        .Where(w => w.RootID == null && w.Language.StartsWith("C-")) // Only Coptic root words
-        .Select(w => new {
-            WordId = (int?)w.WordId,
-            DisplayField = w.Word_text + " (" + w.Language + ", " + w.Class + ")"
-        }).ToList();
-    roots.Insert(0, new { WordId = (int?)null, DisplayField = "No Root" });
-    ViewData["RootID"] = new SelectList(roots, "WordId", "DisplayField", word.RootID);
-
-    ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text", word.Language);
-    ViewData["Class"] = new SelectList(GetPartOfSpeechList(), "Value", "Text", word.Class);
-
-    return View(word);
-}
-
-// KEEP THIS METHOD (it's correct):
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> AddWordToGroup(int wordId, int groupId)
-{
-    var word = await _context.Words.FindAsync(wordId);
-    if (word == null)
-    {
-        TempData["Error"] = "Word not found.";
-        return RedirectToAction("Details", new { id = groupId });
-    }
-
-    // Update the word's GroupID
-    word.GroupID = groupId;
-    _context.Update(word);
-    await _context.SaveChangesAsync();
-
-    TempData["Message"] = $"Word '{word.Word_text}' has been added to the group successfully.";
-    return RedirectToAction("Details", new { id = groupId });
-}
 
 
         public async Task<IActionResult> AddExistingMeaningToGroup(int groupId)
@@ -648,7 +648,7 @@ public async Task<IActionResult> AddWordToGroup(int wordId, int groupId)
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddExistingMeaningToGroup( int meaningID, int groupId)
+        public async Task<IActionResult> AddExistingMeaningToGroup(int meaningID, int groupId)
         {
             if (!ModelState.IsValid)
             {
@@ -759,7 +759,7 @@ public async Task<IActionResult> AddWordToGroup(int wordId, int groupId)
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddExistingGroupAsChild(int parentGroupID, int childGroupID)
+        public async Task<IActionResult> AddExistingGroupAsChild(int parentGroupID, int childGroupID, bool? isCompound)
         {
             // Check if relation already exists
             var existingRelation = await _context.GroupRelations
@@ -776,7 +776,7 @@ public async Task<IActionResult> AddWordToGroup(int wordId, int groupId)
             {
                 ParentGroupID = parentGroupID,
                 RelatedGroupID = childGroupID,
-                IsCompound = false // You can add a parameter for this if needed
+                IsCompound =isCompound
             };
 
             _context.GroupRelations.Add(groupRelation);
@@ -831,7 +831,7 @@ public async Task<IActionResult> AddWordToGroup(int wordId, int groupId)
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddExistingGroupAsParent(int childGroupID, int parentGroupID)
+        public async Task<IActionResult> AddExistingGroupAsParent(int childGroupID, int parentGroupID, bool? isCompound)
         {
             // Check if relation already exists
             var existingRelation = await _context.GroupRelations
@@ -846,7 +846,8 @@ public async Task<IActionResult> AddWordToGroup(int wordId, int groupId)
             var newRelation = new GroupRelation
             {
                 ParentGroupID = parentGroupID,
-                RelatedGroupID = childGroupID
+                RelatedGroupID = childGroupID,
+                IsCompound = isCompound
             };
 
             _context.GroupRelations.Add(newRelation);
@@ -854,7 +855,7 @@ public async Task<IActionResult> AddWordToGroup(int wordId, int groupId)
 
             var parentGroup = await _context.Groups.FindAsync(parentGroupID);
             TempData["Message"] = $"Group '{parentGroup?.Name}' has been added as a parent group successfully.";
-            
+
             return RedirectToAction("Details", new { id = childGroupID });
         }
 
@@ -913,14 +914,14 @@ public async Task<IActionResult> AddWordToGroup(int wordId, int groupId)
 
         //    var childGroup = await _context.Groups.FindAsync(childGroupID);
         //    TempData["Message"] = $"Group '{childGroup?.Name}' has been added as a child group successfully.";
-            
+
         //    return RedirectToAction("Details", new { id = parentGroupID });
         //}
 
         // ...existing code...
 
         // Helper methods - Add these to your GroupWordsController
-        
+
 
         private string GetLanguageDisplayName(string languageCode)
         {
@@ -1256,36 +1257,36 @@ public async Task<IActionResult> AddWordToGroup(int wordId, int groupId)
         }
 
         [HttpGet]
-public JsonResult SearchRoots(string searchTerm)
-{
-    if (string.IsNullOrEmpty(searchTerm) || searchTerm.Length < 2)
-    {
-        return Json(new List<object>());
-    }
-
-    // Normalize the search term
-    var normalizedSearch = NormalizeString(searchTerm);
-
-    // Fetch ONLY Coptic root words (Language starts with "C-" AND RootID is null)
-    var roots = _context.Words
-        .Where(w => w.RootID == null && w.Language.StartsWith("C-")) // Only Coptic root words
-        .AsEnumerable() // Switch to client-side evaluation for normalization
-        .Where(w => NormalizeString(w.Word_text).Contains(normalizedSearch))
-        .Select(w => new
+        public JsonResult SearchRoots(string searchTerm)
         {
-            w.WordId,
-            DisplayField = w.Word_text + " (" + w.Language + ", " + w.Class + ")",
-            word_text = w.Word_text,
-            language = w.Language,
-            @class = w.Class,
-            notes = w.notes
-        })
-        .OrderBy(w => w.word_text)
-        .Take(20) // Limit results
-        .ToList();
+            if (string.IsNullOrEmpty(searchTerm) || searchTerm.Length < 2)
+            {
+                return Json(new List<object>());
+            }
 
-    return Json(roots);
-}
+            // Normalize the search term
+            var normalizedSearch = NormalizeString(searchTerm);
+
+            // Fetch ONLY Coptic root words (Language starts with "C-" AND RootID is null)
+            var roots = _context.Words
+                .Where(w => w.RootID == null && w.Language.StartsWith("C-")) // Only Coptic root words
+                .AsEnumerable() // Switch to client-side evaluation for normalization
+                .Where(w => NormalizeString(w.Word_text).Contains(normalizedSearch))
+                .Select(w => new
+                {
+                    w.WordId,
+                    DisplayField = w.Word_text + " (" + w.Language + ", " + w.Class + ")",
+                    word_text = w.Word_text,
+                    language = w.Language,
+                    @class = w.Class,
+                    notes = w.notes
+                })
+                .OrderBy(w => w.word_text)
+                .Take(20) // Limit results
+                .ToList();
+
+            return Json(roots);
+        }
 
         [HttpPost]
         [ValidateAntiForgeryToken]

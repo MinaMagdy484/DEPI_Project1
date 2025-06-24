@@ -84,11 +84,18 @@
                                         }
                                     }
                                 </td>
-                                <td>
+                                                                <td>
                                     <form asp-action="AddExistingGroupAsChild" method="post" style="display:inline;">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="parentGroupID" value="@ViewBag.ParentGroupID" />
                                         <input type="hidden" name="childGroupID" value="@availableGroup.ID" />
+                                        <div class="mb-2">
+                                            <select name="isCompound" class="form-control" required>
+                                                <option value="">Relation</option>
+                                                <option value="true">Compound</option>
+                                                <option value="false">Derived</option>
+                                            </select>
+                                        </div>
                                         <button type="submit" class="btn btn-success btn-sm"
                                                 onclick="return confirm('Add @availableGroup.Name as child group?');">
                                             <i class="bi bi-plus-circle"></i> Add as Child
