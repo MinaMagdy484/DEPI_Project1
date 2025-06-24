@@ -25,7 +25,9 @@ namespace CopticDictionarynew1.Controllers
 
         public async Task<IActionResult> Index()
         {
-            return View(await _context.Dictionaries.ToListAsync());
+            return View(await _context.Dictionaries
+                .Include(d => d.DictionaryReferenceWords)
+                .ToListAsync());
         }
 
         // GET: Dictionaries/Details/5
@@ -38,7 +40,9 @@ namespace CopticDictionarynew1.Controllers
             }
 
             var dictionary = await _context.Dictionaries
+                .Include(d => d.DictionaryReferenceWords)
                 .FirstOrDefaultAsync(m => m.ID == id);
+            
             if (dictionary == null)
             {
                 return NotFound();
@@ -60,7 +64,7 @@ namespace CopticDictionarynew1.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("ID,DictionaryName,MaxNumberOfPages,Notes")] Dictionary dictionary)
+        public async Task<IActionResult> Create([Bind("ID,DictionaryName,Abbreviation,Detils,MaxNumberOfPages,Notes")] Dictionary dictionary)
         {
             if (ModelState.IsValid)
             {
@@ -72,9 +76,7 @@ namespace CopticDictionarynew1.Controllers
         }
 
         // GET: Dictionaries/Edit/5
-        [Authorize(Roles = "Instructor")]
-        [Authorize(Roles = "Admin")]
-        [Authorize(Roles = "Student")]
+        [Authorize(Roles = "Student,Instructor,Admin")] 
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -96,7 +98,7 @@ namespace CopticDictionarynew1.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("ID,DictionaryName,MaxNumberOfPages,Notes")] Dictionary dictionary)
+        public async Task<IActionResult> Edit(int id, [Bind("ID,DictionaryName,Abbreviation,Detils,MaxNumberOfPages,Notes")] Dictionary dictionary)
         {
             if (id != dictionary.ID)
             {
@@ -135,7 +137,9 @@ namespace CopticDictionarynew1.Controllers
             }
 
             var dictionary = await _context.Dictionaries
+                .Include(d => d.DictionaryReferenceWords)
                 .FirstOrDefaultAsync(m => m.ID == id);
+    
             if (dictionary == null)
             {
                 return NotFound();

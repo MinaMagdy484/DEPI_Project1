@@ -1823,18 +1823,23 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
         {
             TempData["ReturnUrl"] = Request.Headers["Referer"].ToString();
             ViewBag.WordMeaningId = wordMeaningId; // Pass the WordMeaningId to the view
+
+            // Add Bible books dropdown with full Arabic names
+            ViewBag.BibleBooks = GetBibleBooksSelectList("AR", includeFullNames: true);
+            ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text");
+
             return View();
         }
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateBibleReference(int wordMeaningId, int book, int chapter, int verse, string language, string Edition)
+        public async Task<IActionResult> CreateBibleReference(int wordMeaningId, int bookNumber, int chapter, int verse, string language, string Edition)
         {
             if (ModelState.IsValid)
             {
                 // Search for the Bible verse using optimized query
                 var bibleVerseId = await _context.Bibles
                     .AsNoTracking()  // Disable change tracking
-                    .Where(b => b.Book == book
+                    .Where(b => b.Book == bookNumber
                                 && b.Chapter == chapter
                                 && b.Verse == verse
                                 && b.Language == language
@@ -1863,11 +1868,17 @@ public async Task<IActionResult> DeleteConfirmedWM(int id, int? wordId = null)
                 }
                 else
                 {
-                    ModelState.AddModelError("", "Bible verse not found.");
+                    var bookName = GetBibleBookDisplayName(bookNumber, "AR", useFullName: true);
+                    var languageName = GetLanguageDisplayName(language);
+                    ModelState.AddModelError("", $"Bible verse not found: {bookName} {chapter}:{verse} in {languageName} ({Edition})");
                 }
             }
 
+            // Repopulate dropdowns if there's an error
             ViewBag.WordMeaningId = wordMeaningId;
+            ViewBag.BibleBooks = GetBibleBooksSelectList("AR", includeFullNames: true);
+            ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text", language);
+
             return View();
         }
 
@@ -2861,7 +2872,203 @@ public async Task<IActionResult> CreateWordAddedToMeaning(int meaningId, [Bind("
     return View(word);
 }
 
-// ...existing code...
+        // ...existing code...
+
+
+        private List<BibleBookInfo> GetBibleBooksList()
+        {
+            return new List<BibleBookInfo>
+    {
+        new BibleBookInfo { BookNumber = 1, EN = "Gen", AR = "تك", CB = "ⲅⲉⲛ", CS = "ⲅⲉⲛ", ARFull = "تكوين" },
+        new BibleBookInfo { BookNumber = 2, EN = "Exo", AR = "خر", CB = "ⲉⲝ", CS = "ⲉⲝ", ARFull = "خروج" },
+        new BibleBookInfo { BookNumber = 3, EN = "Lev", AR = "لا", CB = "ⲗⲉⲩ", CS = "ⲗⲉⲩ", ARFull = "لاويين" },
+        new BibleBookInfo { BookNumber = 4, EN = "Num", AR = "عد", CB = "ⲁⲣ", CS = "ⲁⲣ", ARFull = "العدد" },
+        new BibleBookInfo { BookNumber = 5, EN = "Deut", AR = "تث", CB = "ⲇⲉⲩ", CS = "ⲇⲉⲩ", ARFull = "التثنية" },
+        new BibleBookInfo { BookNumber = 6, EN = "Josh", AR = "يش", CB = "ⲓⲏ", CS = "ⲓⲏ", ARFull = "يشوع" },
+        new BibleBookInfo { BookNumber = 7, EN = "Judg", AR = "قض", CB = "ⲕⲣ", CS = "ⲕⲣ", ARFull = "القضاة" },
+        new BibleBookInfo { BookNumber = 8, EN = "Ruth", AR = "را", CB = "ⲣⲱ", CS = "ⲣⲱ", ARFull = "راعوث" },
+        new BibleBookInfo { BookNumber = 9, EN = "1Sam", AR = "1صم", CB = "ⲁ̅ ⲥⲁⲙ", CS = "ⲁ̅ ⲥⲁⲙ", ARFull = "صموئيل الأول" },
+        new BibleBookInfo { BookNumber = 10, EN = "2Sam", AR = "2صم", CB = "ⲃ̅ ⲥⲁⲙ", CS = "ⲃ̅ ⲥⲁⲙ", ARFull = "صموئيل الثاني" },
+        new BibleBookInfo { BookNumber = 11, EN = "1Kgs", AR = "1مل", CB = "ⲁ̅ ⲃⲁⲥ", CS = "ⲁ̅ ⲃⲁⲥ", ARFull = "الملوك الأول" },
+        new BibleBookInfo { BookNumber = 12, EN = "2Kgs", AR = "2مل", CB = "ⲃ̅ ⲃⲁⲥ", CS = "ⲃ̅ ⲃⲁⲥ", ARFull = "الملوك الثاني" },
+        new BibleBookInfo { BookNumber = 13, EN = "1Chr", AR = "1اخ", CB = "ⲁ̅ ⲡⲁⲣⲁ", CS = "ⲁ̅ ⲡⲁⲣⲁ", ARFull = "أخبار الأيام الأول" },
+        new BibleBookInfo { BookNumber = 14, EN = "2Chr", AR = "2اخ", CB = "ⲃ̅ ⲡⲁⲣⲁ", CS = "ⲃ̅ ⲡⲁⲣⲁ", ARFull = "أخبار الأيام الثاني" },
+        new BibleBookInfo { BookNumber = 15, EN = "Pr. of Man", AR = "صلاة منسى", CB = "ⲠⲣⲘⲛⲥ", CS = "ⲠⲣⲘⲛⲥ", ARFull = "صلاة منسى" },
+        new BibleBookInfo { BookNumber = 16, EN = "Ezra", AR = "عز", CB = "ⲉⲥⲇ", CS = "ⲉⲥⲇ", ARFull = "عزرا" },
+        new BibleBookInfo { BookNumber = 17, EN = "Neh", AR = "نح", CB = "ⲛⲉ", CS = "ⲛⲉ", ARFull = "نحميا" },
+        new BibleBookInfo { BookNumber = 18, EN = "Tob", AR = "طو", CB = "ⲧⲱⲃϩ", CS = "ⲧⲱⲃϩ", ARFull = "طوبيا" },
+        new BibleBookInfo { BookNumber = 19, EN = "Jdth", AR = "يهو", CB = "ⲓⲟⲩⲇ", CS = "ⲓⲟⲩⲇ", ARFull = "يهوذيت" },
+        new BibleBookInfo { BookNumber = 20, EN = "Est", AR = "اس", CB = "ⲉⲥⲑ", CS = "ⲉⲥⲑ", ARFull = "أستير" },
+        new BibleBookInfo { BookNumber = 21, EN = "Job", AR = "اي", CB = "ⲓⲱⲃ", CS = "ⲓⲱⲃ", ARFull = "أيوب" },
+        new BibleBookInfo { BookNumber = 22, EN = "Ps", AR = "مز", CB = "ⲯⲁⲗ", CS = "ⲯⲁⲗ", ARFull = "المزامير" },
+        new BibleBookInfo { BookNumber = 23, EN = "Prov", AR = "ام", CB = "ⲡⲁⲣ", CS = "ⲡⲁⲣ", ARFull = "الأمثال" },
+        new BibleBookInfo { BookNumber = 24, EN = "Ecc", AR = "جا", CB = "ⲉⲕⲕⲗ", CS = "ⲉⲕⲕⲗ", ARFull = "الجامعة" },
+        new BibleBookInfo { BookNumber = 25, EN = "Song", AR = "نش", CB = "ⲁⲓⲥⲙ", CS = "ⲁⲓⲥⲙ", ARFull = "نشيد الأنشاد" },
+        new BibleBookInfo { BookNumber = 26, EN = "Wis", AR = "حك", CB = "ⲥⲟⲫ", CS = "ⲥⲟⲫ", ARFull = "الحكمة" },
+        new BibleBookInfo { BookNumber = 27, EN = "Sir", AR = "سير", CB = "ⲥⲉⲓⲣ", CS = "ⲥⲉⲓⲣ", ARFull = "يشوع بن سيراخ" },
+        new BibleBookInfo { BookNumber = 28, EN = "Isa", AR = "اش", CB = "ⲏⲥ", CS = "ⲏⲥ", ARFull = "إشعياء" },
+        new BibleBookInfo { BookNumber = 29, EN = "Jer", AR = "ار", CB = "ⲓⲉⲣ", CS = "ⲓⲉⲣ", ARFull = "إرميا" },
+        new BibleBookInfo { BookNumber = 30, EN = "Lam", AR = "مرا", CB = "ⲑⲣ", CS = "ⲑⲣ", ARFull = "مراثي إرميا" },
+        new BibleBookInfo { BookNumber = 31, EN = "Bar", AR = "بار", CB = "ⲃⲁ", CS = "ⲃⲁ", ARFull = "باروخ" },
+        new BibleBookInfo { BookNumber = 32, EN = "Ezek", AR = "حز", CB = "ⲓⲉⲍ", CS = "ⲓⲉⲍ", ARFull = "حزقيال" },
+        new BibleBookInfo { BookNumber = 33, EN = "Dan", AR = "دا", CB = "ⲇⲁⲛ", CS = "ⲇⲁⲛ", ARFull = "دانيال" },
+        new BibleBookInfo { BookNumber = 34, EN = "Hos", AR = "هو", CB = "ϩⲱⲥ", CS = "ϩⲱⲥ", ARFull = "هوشع" },
+        new BibleBookInfo { BookNumber = 35, EN = "Joel", AR = "يؤ", CB = "ⲓⲱⲗ", CS = "ⲓⲱⲗ", ARFull = "يوئيل" },
+        new BibleBookInfo { BookNumber = 36, EN = "Amos", AR = "عا", CB = "ⲁⲙ", CS = "ⲁⲙ", ARFull = "عاموس" },
+        new BibleBookInfo { BookNumber = 37, EN = "Obad", AR = "عو", CB = "ⲟⲃⲇ", CS = "ⲟⲃⲇ", ARFull = "عوبديا" },
+        new BibleBookInfo { BookNumber = 38, EN = "Jonah", AR = "يون", CB = "ⲓⲱⲛ", CS = "ⲓⲱⲛ", ARFull = "يونان" },
+        new BibleBookInfo { BookNumber = 39, EN = "Mic", AR = "مي", CB = "ⲙⲓⲭ", CS = "ⲙⲓⲭ", ARFull = "ميخا" },
+        new BibleBookInfo { BookNumber = 40, EN = "Nah", AR = "نا", CB = "ⲛⲁ", CS = "ⲛⲁ", ARFull = "ناحوم" },
+        new BibleBookInfo { BookNumber = 41, EN = "Hab", AR = "حب", CB = "ⲁⲙⲃ", CS = "ⲁⲙⲃ", ARFull = "حبقوق" },
+        new BibleBookInfo { BookNumber = 42, EN = "Zeph", AR = "صف", CB = "ⲥⲁⲫ", CS = "ⲥⲁⲫ", ARFull = "صفنيا" },
+        new BibleBookInfo { BookNumber = 43, EN = "Hag", AR = "حج", CB = "ϩⲅ", CS = "ϩⲅ", ARFull = "حجي" },
+        new BibleBookInfo { BookNumber = 44, EN = "Zech", AR = "زك", CB = "ⲍⲁⲭ", CS = "ⲍⲁⲭ", ARFull = "زكريا" },
+        new BibleBookInfo { BookNumber = 45, EN = "Mal", AR = "ملا", CB = "ⲙⲁⲗⲁⲭ", CS = "ⲙⲁⲗⲁⲭ", ARFull = "ملاخي" },
+        new BibleBookInfo { BookNumber = 46, EN = "1Macc", AR = "1مك", CB = "ⲁ̅ ⲙⲁⲕ", CS = "ⲁ̅ ⲙⲁⲕ", ARFull = "مكابيين أول" },
+        new BibleBookInfo { BookNumber = 47, EN = "2Macc", AR = "2مك", CB = "ⲃ̅ ⲙⲁⲕ", CS = "ⲃ̅ ⲙⲁⲕ", ARFull = "مكابيين ثاني" },
+        new BibleBookInfo { BookNumber = 48, EN = "Mat", AR = "مت", CB = "ⲘⲀⲦ", CS = "ⲘⲀⲦ", ARFull = "متى" },
+        new BibleBookInfo { BookNumber = 49, EN = "Mar", AR = "مرا", CB = "ⳘⲀⲢ", CS = "ⳘⲀⲢ", ARFull = "مرقس" },
+        new BibleBookInfo { BookNumber = 50, EN = "Luk", AR = "لو", CB = "ⲖⲞⲨ", CS = "ⲖⲞⲨ", ARFull = "لوقا" },
+        new BibleBookInfo { BookNumber = 51, EN = "Joh", AR = "يون", CB = "ⲒⲰⲀ", CS = "ⲒⲰⲀ", ARFull = "يوحنا" },
+        new BibleBookInfo { BookNumber = 52, EN = "Act", AR = "اع", CB = "ⲠⲢⲀ", CS = "ⲠⲢⲀ", ARFull = "أعمال الرسل" },
+        new BibleBookInfo { BookNumber = 53, EN = "Rom", AR = "رو", CB = "ⲢⲰⳘ", CS = "ⲢⲰⳘ", ARFull = "رومية" },
+        new BibleBookInfo { BookNumber = 54, EN = "1Co", AR = "1كو", CB = "ⲁ̅ ⲔⲞⲢ", CS = "ⲁ̅ ⲔⲞⲢ", ARFull = "كورنثوس الأولى" },
+        new BibleBookInfo { BookNumber = 55, EN = "2Co", AR = "2كو", CB = "ⲃ̅̅ ⲔⲞⲢ", CS = "ⲃ̅̅ ⲔⲞⲢ", ARFull = "كورنثوس الثانية" },
+        new BibleBookInfo { BookNumber = 56, EN = "Gal", AR = "غل", CB = "ⲄⲀⲖ", CS = "ⲄⲀⲖ", ARFull = "غلاطية" },
+        new BibleBookInfo { BookNumber = 57, EN = "Eph", AR = "اف", CB = "ⲈⲪⲈ", CS = "ⲈⲪⲈ", ARFull = "أفسس" },
+        new BibleBookInfo { BookNumber = 58, EN = "Phi", AR = "في", CB = "ⲪⲒⲖ", CS = "ⲪⲒⲖ", ARFull = "فيلبي" },
+        new BibleBookInfo { BookNumber = 59, EN = "Col", AR = "كو", CB = "ⲔⲞⲖ", CS = "ⲔⲞⲖ", ARFull = "كولوسي" },
+        new BibleBookInfo { BookNumber = 60, EN = "1Th", AR = "1تس", CB = "ⲁ̅ ⲐⲈⲤ", CS = "ⲁ̅ ⲐⲈⲤ", ARFull = "تسالونيكي الأولى" },
+        new BibleBookInfo { BookNumber = 61, EN = "2Th", AR = "2تس", CB = "ⲃ̅ ⲐⲈⲤ", CS = "ⲃ̅ ⲐⲈⲤ", ARFull = "تسالونيكي الثانية" },
+        new BibleBookInfo { BookNumber = 62, EN = "1Ti", AR = "1تي", CB = "ⲁ̅ ⲦⲒⳘ", CS = "ⲁ̅ ⲦⲒⳘ", ARFull = "تيموثاوس الأولى" },
+        new BibleBookInfo { BookNumber = 63, EN = "2Ti", AR = "2تي", CB = "ⲃ̅ ⲦⲒⳘ", CS = "ⲃ̅ ⲦⲒⳘ", ARFull = "تيموثاوس الثانية" },
+        new BibleBookInfo { BookNumber = 64, EN = "Tit", AR = "تي", CB = "ⲦⲒⲦ", CS = "ⲦⲒⲦ", ARFull = "تيطس" },
+        new BibleBookInfo { BookNumber = 65, EN = "Phm", AR = "فل", CB = "ⲪⲒⲘ", CS = "ⲪⲒⲘ", ARFull = "فليمون" },
+        new BibleBookInfo { BookNumber = 66, EN = "Heb", AR = "عب", CB = "ϩⲉⲃ", CS = "ϩⲉⲃ", ARFull = "عبرانيين" },
+        new BibleBookInfo { BookNumber = 67, EN = "Jas", AR = "يع", CB = "ⲒⲀⲔ", CS = "ⲒⲀⲔ", ARFull = "يعقوب" },
+        new BibleBookInfo { BookNumber = 68, EN = "1Pe", AR = "1بط", CB = "ⲁ̅ ⲠⲈⲦ", CS = "ⲁ̅ ⲠⲈⲦ", ARFull = "بطرس الأولى" },
+        new BibleBookInfo { BookNumber = 69, EN = "2Pe", AR = "2بط", CB = "ⲃ̅ ⲠⲈⲦ", CS = "ⲃ̅ ⲠⲈⲦ", ARFull = "بطرس الثانية" },
+        new BibleBookInfo { BookNumber = 70, EN = "1Jn", AR = "1يو", CB = "ⲁ̅ ⲒⲰⲀ", CS = "ⲁ̅ ⲒⲰⲀ", ARFull = "يوحنا الأولى" },
+        new BibleBookInfo { BookNumber = 71, EN = "2Jn", AR = "2يو", CB = "ⲃ̅ ⲒⲰⲀ", CS = "ⲃ̅ ⲒⲰⲀ", ARFull = "يوحنا الثانية" },
+        new BibleBookInfo { BookNumber = 72, EN = "3Jn", AR = "3يو", CB = "ⲅ̅ ⲒⲰⲀ", CS = "ⲅ̅ ⲒⲰⲀ", ARFull = "يوحنا الثالثة" },
+        new BibleBookInfo { BookNumber = 73, EN = "Jud", AR = "يه", CB = "ⲒⲞⲨ", CS = "ⲒⲞⲨ", ARFull = "يهوذا" },
+        new BibleBookInfo { BookNumber = 74, EN = "Rev", AR = "رؤ", CB = "ⲀⲠⲞ", CS = "ⲀⲠⲞ", ARFull = "رؤيا يوحنا" }
+    };
+        }
+
+
+
+        // Enhanced method to get book number by abbreviation, short name, or full name in any language
+        private int GetBibleBookNumber(string searchTerm, string language = "")
+        {
+            var books = GetBibleBooksList();
+            var normalizedSearch = searchTerm?.Trim().ToLower() ?? "";
+
+            // If language is specified, search in that specific language
+            if (!string.IsNullOrEmpty(language))
+            {
+                var book = language.ToUpper() switch
+                {
+                    "EN" => books.FirstOrDefault(b =>
+                        b.EN.Equals(searchTerm, StringComparison.OrdinalIgnoreCase)),
+                    "AR" => books.FirstOrDefault(b =>
+                        b.AR == searchTerm || b.ARFull == searchTerm),
+                    "C-B" => books.FirstOrDefault(b => b.CB == searchTerm),
+                    "C-S" => books.FirstOrDefault(b => b.CS == searchTerm),
+                    _ => null
+                };
+                return book?.BookNumber ?? 0;
+            }
+
+            // Search across all languages if no specific language is provided
+            var foundBook = books.FirstOrDefault(b =>
+                b.EN.Equals(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                b.AR == searchTerm ||
+                b.ARFull == searchTerm ||
+                b.CB == searchTerm ||
+                b.CS == searchTerm ||
+                b.ARFull.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) // Partial match for full Arabic names
+            );
+
+            return foundBook?.BookNumber ?? 0;
+        }
+
+        // Enhanced method to get SelectList for Bible books with full names for better display
+        private SelectList GetBibleBooksSelectList(string language = "EN", bool includeFullNames = false)
+        {
+            var books = GetBibleBooksList();
+            var items = books.Select(book => new SelectListItem
+            {
+                Value = book.BookNumber.ToString(),
+                Text = language.ToUpper() switch
+                {
+                    "EN" => $"{book.BookNumber}. {book.EN}",
+                    "AR" => includeFullNames ?
+                        $"{book.BookNumber}. {book.ARFull} ({book.AR})" :
+                        $"{book.BookNumber}. {book.AR}",
+                    "C-B" => $"{book.BookNumber}. {book.CB}",
+                    "C-S" => $"{book.BookNumber}. {book.CS}",
+                    _ => $"{book.BookNumber}. {book.EN}"
+                }
+            }).ToList();
+
+            return new SelectList(items, "Value", "Text");
+        }
+
+        // Method to search books by name (useful for autocomplete or search functionality)
+        private List<BibleBookInfo> SearchBibleBooks(string searchTerm, string language = "")
+        {
+            var books = GetBibleBooksList();
+            var normalizedSearch = searchTerm?.Trim().ToLower() ?? "";
+
+            if (string.IsNullOrEmpty(normalizedSearch))
+                return books;
+
+            return books.Where(book =>
+            {
+                if (!string.IsNullOrEmpty(language))
+                {
+                    return language.ToUpper() switch
+                    {
+                        "EN" => book.EN.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase),
+                        "AR" => book.AR.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+                               book.ARFull.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase),
+                        "C-B" => book.CB.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase),
+                        "C-S" => book.CS.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase),
+                        _ => false
+                    };
+                }
+
+                // Search across all languages
+                return book.EN.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+                       book.AR.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+                       book.ARFull.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+                       book.CB.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+                       book.CS.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase);
+            }).ToList();
+        }
+
+        // Method to get book display name with option to show full Arabic name
+        private string GetBibleBookDisplayName(int bookNumber, string language = "EN", bool useFullName = false)
+        {
+            var book = GetBibleBooksList().FirstOrDefault(b => b.BookNumber == bookNumber);
+            if (book == null) return $"Book {bookNumber}";
+
+            return language.ToUpper() switch
+            {
+                "EN" => $"{bookNumber}. {book.EN}",
+                "AR" => useFullName ?
+                    $"{bookNumber}. {book.ARFull}" :
+                    $"{bookNumber}. {book.AR}",
+                "C-B" => $"{bookNumber}. {book.CB}",
+                "C-S" => $"{bookNumber}. {book.CS}",
+                _ => $"{bookNumber}. {book.EN}"
+            };
+        }
+
+      
+
+
     }
 
 

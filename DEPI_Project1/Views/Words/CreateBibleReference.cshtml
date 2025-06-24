@@ -2,39 +2,122 @@
     ViewBag.Title = "Create Bible Reference";
 }
 
-<form asp-action="CreateBibleReference" method="post">
-    <input type="hidden" name="wordMeaningId" value="@ViewBag.WordMeaningId" />
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0"><i class="bi bi-book"></i> Add Bible Reference</h4>
+                </div>
+                <div class="card-body">
+                    <form asp-action="CreateBibleReference" method="post">
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+                        
+                        <input type="hidden" name="wordMeaningId" value="@ViewBag.WordMeaningId" />
 
-    <div class="form-group">
-        <label for="book">Book</label>
-        <input type="text" name="book" class="form-control" required />
-    </div>
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="bookNumber" class="form-label">
+                                    <i class="bi bi-book-half"></i> Bible Book *
+                                </label>
+                                <div class="position-relative">
+                                    <input type="text" id="bookSearch" class="form-control mb-2" placeholder="Search for a Bible book..." />
+                                    <select name="bookNumber" id="bookSelect" class="form-select" required>
+                                        <option value="">-- Select a Bible Book --</option>
+                                        @foreach (var book in ViewBag.BibleBooks as SelectList)
+                                        {
+                                            <option value="@book.Value" data-search="@book.Text.ToLower()">@book.Text</option>
+                                        }
+                                    </select>
+                                </div>
+                                <small class="form-text text-muted">Type to search or select from dropdown</small>
+                            </div>
+                        </div>
 
-    <div class="form-group">
-        <label for="chapter">Chapter</label>
-        <input type="number" name="chapter" class="form-control" required />
-    </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="chapter" class="form-label">
+                                    <i class="bi bi-hash"></i> Chapter *
+                                </label>
+                                <input type="number" name="chapter" class="form-control" min="1" required placeholder="e.g., 1" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="verse" class="form-label">
+                                    <i class="bi bi-hash"></i> Verse *
+                                </label>
+                                <input type="number" name="verse" class="form-control" min="1" required placeholder="e.g., 1" />
+                            </div>
+                        </div>
 
-    <div class="form-group">
-        <label for="verse">Verse</label>
-        <input type="number" name="verse" class="form-control" required />
-    </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="language" class="form-label">
+                                    <i class="bi bi-translate"></i> Language *
+                                </label>
+                                <select name="language" class="form-select" required>
+                                    <option value="">-- Select Language --</option>
+                                    @foreach (var language in ViewData["Languages"] as SelectList)
+                                    {
+                                        <option value="@language.Value">@language.Text</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="Edition" class="form-label">
+                                    <i class="bi bi-journal-text"></i> Edition *
+                                </label>
+                                <input type="text" name="Edition" class="form-control" required placeholder="e.g., KJV, NIV" />
+                            </div>
+                        </div>
 
-    <div class="form-group">
-        <label for="language">Language</label>
-        <input type="text" name="language" class="form-control" required />
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="javascript:history.back()" class="btn btn-secondary me-md-2">
+                                <i class="bi bi-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-info">
+                                <i class="bi bi-search"></i> Search and Add Reference
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="form-group">
-        <label for="Edition">Edition</label>
-        <input type="text" name="Edition" class="form-control" required />
-    </div>
+</div>
 
-    <button type="submit" class="btn btn-primary">Search and Add Bible Verse</button>
-</form>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const bookSearch = document.getElementById('bookSearch');
+    const bookSelect = document.getElementById('bookSelect');
+    const options = Array.from(bookSelect.options);
 
-@if (ViewBag.ErrorMessage != null)
-{
-    <div class="alert alert-danger">
-        @ViewBag.ErrorMessage
-    </div>
+    // Search functionality
+    bookSearch.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        // Clear current options (except first)
+        bookSelect.innerHTML = '<option value="">-- Select a Bible Book --</option>';
+        
+        // Filter and add matching options
+        const filteredOptions = options.slice(1).filter(option => 
+            option.dataset.search.includes(searchTerm)
+        );
+        
+        filteredOptions.forEach(option => {
+            bookSelect.appendChild(option.cloneNode(true));
+        });
+    });
+    
+    // Auto-select if only one match
+    bookSearch.addEventListener('input', function() {
+        const visibleOptions = Array.from(bookSelect.options).filter(opt => opt.value !== '');
+        if (visibleOptions.length === 1) {
+            bookSelect.value = visibleOptions[0].value;
+        }
+    });
+});
+</script>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
 }
