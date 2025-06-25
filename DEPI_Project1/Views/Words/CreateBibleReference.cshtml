@@ -8,6 +8,10 @@
             <div class="card shadow">
                 <div class="card-header bg-info text-white">
                     <h4 class="mb-0"><i class="bi bi-book"></i> Add Bible Reference</h4>
+                    @if (!string.IsNullOrEmpty(ViewBag.WordText?.ToString()))
+                    {
+                        <small class="d-block mt-1">for word: <strong>@ViewBag.WordText</strong></small>
+                    }
                 </div>
                 <div class="card-body">
                     <form asp-action="CreateBibleReference" method="post">
@@ -36,17 +40,35 @@
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="language" class="form-label">
-                                    <i class="bi bi-translate"></i> Language *
-                                </label>
-                                <select name="language" id="languageSelect" class="form-select" required>
-                                    <option value="">-- Select Language --</option>
-                                    @foreach (var language in ViewData["Languages"] as SelectList)
-                                    {
-                                        <option value="@language.Value">@language.Text</option>
-                                    }
-                                </select>
-                            </div>
+    <label for="language" class="form-label">
+        <i class="bi bi-translate"></i> Language *
+    </label>
+    
+    <!-- Hidden input to submit the selected language value -->
+    <input type="hidden" name="language" value="@ViewBag.WordLanguage" />
+
+    <select id="languageSelect" class="form-select" disabled>
+        <option value="">-- Select Language --</option>
+        @foreach (var language in ViewData["Languages"] as SelectList)
+        {
+            if (!string.IsNullOrEmpty(ViewBag.WordLanguage?.ToString()) && 
+                language.Value == ViewBag.WordLanguage.ToString())
+            {
+                <option value="@language.Value" selected>@language.Text</option>
+            }
+            else
+            {
+                <option value="@language.Value">@language.Text</option>
+            }
+        }
+    </select>
+
+    @if (!string.IsNullOrEmpty(ViewBag.WordLanguage?.ToString()))
+    {
+        <small class="form-text text-muted">Pre-selected based on word language: @ViewBag.WordLanguage</small>
+    }
+</div>
+
                             <div class="col-md-6 mb-3">
                                 <label for="Edition" class="form-label">
                                     <i class="bi bi-journal-text"></i> Edition *
@@ -129,22 +151,29 @@ document.addEventListener('DOMContentLoaded', function() {
     bookSearch.addEventListener('input', function() {
         const searchTerm = this.value.toLowerCase();
         
+        // Save current selection
+        const currentValue = bookSelect.value;
+        
         // Clear current options (except first)
         bookSelect.innerHTML = '<option value="">-- Select a Bible Book --</option>';
         
         // Filter and add matching options
         const filteredOptions = options.slice(1).filter(option => 
-            option.dataset.search.includes(searchTerm)
+            option.dataset.search && option.dataset.search.includes(searchTerm)
         );
         
         filteredOptions.forEach(option => {
             bookSelect.appendChild(option.cloneNode(true));
         });
         
-        // Auto-select if only one match
-        const visibleOptions = Array.from(bookSelect.options).filter(opt => opt.value !== '');
-        if (visibleOptions.length === 1) {
-            bookSelect.value = visibleOptions[0].value;
+        // Restore selection if it still exists
+        if (currentValue && bookSelect.querySelector(`option[value="${currentValue}"]`)) {
+            bookSelect.value = currentValue;
+        }
+        
+        // Auto-select if only one match and search term is not empty
+        if (searchTerm && filteredOptions.length === 1) {
+            bookSelect.value = filteredOptions[0].value;
             bookSelect.dispatchEvent(new Event('change'));
         }
     });
@@ -164,9 +193,17 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show loading
         editionLoading.classList.remove('d-none');
         editionSelect.disabled = true;
+        editionSelect.innerHTML = '<option value="">-- Loading... --</option>';
         
-        fetch(`/Words/GetAvailableEditions?bookNumber=${bookNumber}&language=${encodeURIComponent(language)}`)
-            .then(response => response.json())
+        const url = `/Words/GetAvailableEditions?bookNumber=${encodeURIComponent(bookNumber)}&language=${encodeURIComponent(language)}`;
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 editionLoading.classList.add('d-none');
                 
@@ -179,6 +216,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         editionSelect.appendChild(option);
                     });
                     editionSelect.disabled = false;
+                    
+                    // Auto-select if only one edition available
+                    if (data.editions.length === 1) {
+                        editionSelect.value = data.editions[0];
+                        editionSelect.dispatchEvent(new Event('change'));
+                    }
                 } else {
                     editionSelect.innerHTML = '<option value="">-- No Editions Available --</option>';
                     editionSelect.disabled = true;
@@ -211,9 +254,17 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show loading
         chapterLoading.classList.remove('d-none');
         chapterSelect.disabled = true;
+        chapterSelect.innerHTML = '<option value="">-- Loading... --</option>';
         
-        fetch(`/Words/GetAvailableChapters?bookNumber=${bookNumber}&language=${encodeURIComponent(language)}&edition=${encodeURIComponent(edition)}`)
-            .then(response => response.json())
+        const url = `/Words/GetAvailableChapters?bookNumber=${encodeURIComponent(bookNumber)}&language=${encodeURIComponent(language)}&edition=${encodeURIComponent(edition)}`;
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 chapterLoading.classList.add('d-none');
                 
@@ -258,9 +309,17 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show loading
         verseLoading.classList.remove('d-none');
         verseSelect.disabled = true;
+        verseSelect.innerHTML = '<option value="">-- Loading... --</option>';
         
-        fetch(`/Words/GetAvailableVerses?bookNumber=${bookNumber}&language=${encodeURIComponent(language)}&edition=${encodeURIComponent(edition)}&chapter=${chapter}`)
-            .then(response => response.json())
+        const url = `/Words/GetAvailableVerses?bookNumber=${encodeURIComponent(bookNumber)}&language=${encodeURIComponent(language)}&edition=${encodeURIComponent(edition)}&chapter=${encodeURIComponent(chapter)}`;
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 verseLoading.classList.add('d-none');
                 
@@ -290,12 +349,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function resetChaptersAndVerses() {
         chapterSelect.innerHTML = '<option value="">-- Select Edition First --</option>';
         chapterSelect.disabled = true;
+        chapterLoading.classList.add('d-none');
         resetVerses();
     }
 
     function resetVerses() {
         verseSelect.innerHTML = '<option value="">-- Select Chapter First --</option>';
         verseSelect.disabled = true;
+        verseLoading.classList.add('d-none');
     }
 
     // Event listeners
@@ -303,6 +364,14 @@ document.addEventListener('DOMContentLoaded', function() {
     languageSelect.addEventListener('change', loadEditions);
     editionSelect.addEventListener('change', loadChapters);
     chapterSelect.addEventListener('change', loadVerses);
+
+    // Auto-load editions if both book and language are already selected on page load
+    if (languageSelect.value && bookSelect.value) {
+        loadEditions();
+    } else if (languageSelect.value) {
+        // If language is pre-selected but no book, just trigger change to enable the flow when book is selected
+        languageSelect.dispatchEvent(new Event('change'));
+    }
 });
 </script>
 
