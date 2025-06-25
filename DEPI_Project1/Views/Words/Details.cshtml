@@ -105,22 +105,22 @@
                                         {
                                             <td>
                                                 @{
-                                                    if (languageGroup.Value != null && 
-                                                        languageGroup.Value.ContainsKey(wordClass) && 
-                                                        languageGroup.Value[wordClass]?.Count > 0)
+                                                    if (languageGroup.Value != null &&
+                                                    languageGroup.Value.ContainsKey(wordClass) &&
+                                                    languageGroup.Value[wordClass]?.Count > 0)
+                                                    {
+                                                        @foreach (var word in languageGroup.Value[wordClass])
                                                         {
-                                                            @foreach (var word in languageGroup.Value[wordClass])
-                                                            {
-                                                                <div>
-                                                                    <a asp-controller="Words" 
-                                                                       asp-action="Details" 
-                                                                       asp-route-id="@word.WordId"
-                                                                       class="text-decoration-none">
-                                                                        @word.Word_text
-                                                                    </a>
-                                                                </div>
-                                                            }
+                                                            <div>
+                                                                <a asp-controller="Words"
+                                                                   asp-action="Details"
+                                                                   asp-route-id="@word.WordId"
+                                                                   class="text-decoration-none">
+                                                                    @word.Word_text
+                                                                </a>
+                                                            </div>
                                                         }
+                                                    }
                                                 }
                                             </td>
                                         }
@@ -427,15 +427,18 @@ else
     @foreach (var word_meaning in Model.WordMeanings)
     {
         <li class="nav-item" role="presentation">
-            <button class="nav-link @(tabIndex == 1 ? "active" : "")" 
-                    id="meaning-tab-@tabIndex" 
-                    data-bs-toggle="tab" 
-                    data-bs-target="#meaning-content-@tabIndex" 
-                    type="button" 
+            <button class="nav-link @(tabIndex == 1 ? "active" : "")"
+                    id="meaning-tab-@tabIndex"
+                    data-bs-toggle="tab"
+                    data-bs-target="#meaning-content-@tabIndex"
+                    type="button"
                     role="tab">
                 Definition @tabIndex
             </button>
         </li>
+
+
+
         tabIndex++;
     }
 </ul>

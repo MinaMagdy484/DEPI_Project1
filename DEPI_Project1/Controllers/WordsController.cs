@@ -2956,7 +2956,7 @@ public IActionResult CreateBibleReference(int wordMeaningId)
         new BibleBookInfo { BookNumber = 48, EN = "Mat", AR = "مت", CB = "ⲘⲀⲦ", CS = "ⲘⲀⲦ", ARFull = "متى" },
         new BibleBookInfo { BookNumber = 49, EN = "Mar", AR = "مرا", CB = "ⳘⲀⲢ", CS = "ⳘⲀⲢ", ARFull = "مرقس" },
         new BibleBookInfo { BookNumber = 50, EN = "Luk", AR = "لو", CB = "ⲖⲞⲨ", CS = "ⲖⲞⲨ", ARFull = "لوقا" },
-        new BibleBookInfo { BookNumber = 51, EN = "Joh", AR = "يون", CB = "ⲒⲰⲀ", CS = "ⲒⲰⲀ", ARFull = "يوحنا" },
+        new BibleBookInfo { BookNumber = 51, EN = "Joh", AR = "يو", CB = "ⲒⲰⲀ", CS = "ⲒⲰⲀ", ARFull = "يوحنا" },
         new BibleBookInfo { BookNumber = 52, EN = "Act", AR = "اع", CB = "ⲠⲢⲀ", CS = "ⲠⲢⲀ", ARFull = "أعمال الرسل" },
         new BibleBookInfo { BookNumber = 53, EN = "Rom", AR = "رو", CB = "ⲢⲰⳘ", CS = "ⲢⲰⳘ", ARFull = "رومية" },
         new BibleBookInfo { BookNumber = 54, EN = "1Co", AR = "1كو", CB = "ⲁ̅ ⲔⲞⲢ", CS = "ⲁ̅ ⲔⲞⲢ", ARFull = "كورنثوس الأولى" },
