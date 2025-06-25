@@ -224,62 +224,68 @@ namespace CopticDictionarynew1.Controllers
             {
                 _context.Add(groupWord);
                 await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction("Details", new { id = groupWord.ID });
             }
             ViewBag.Languages = new SelectList(GetLanguagesList(), "Value", "Text");
             return View(groupWord);
         }
 
         // GET: GroupWords/Edit/5
-        public async Task<IActionResult> Edit(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
+// GET: GroupWords/Edit/5
+public async Task<IActionResult> Edit(int? id)
+{
+    if (id == null)
+    {
+        return NotFound();
+    }
 
-            var groupWord = await _context.Groups.FindAsync(id);
-            if (groupWord == null)
-            {
-                return NotFound();
-            }
-            return View(groupWord);
-        }
-
+    var groupWord = await _context.Groups.FindAsync(id);
+    if (groupWord == null)
+    {
+        return NotFound();
+    }
+    
+    // Add language dropdown for Edit view
+    ViewBag.Languages = new SelectList(GetLanguagesList(), "Value", "Text", groupWord.OriginLanguage);
+    
+    return View(groupWord);
+}
         // POST: GroupWords/Edit/5
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("ID,Name,OriginLanguage,EtymologyWord,Etymology,Notes,Pronunciation")] GroupWord groupWord)
+        // POST: GroupWords/Edit/5
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Edit(int id, [Bind("ID,Name,OriginLanguage,EtymologyWord,Etymology,Notes,Pronunciation")] GroupWord groupWord)
+{
+    if (id != groupWord.ID)
+    {
+        return NotFound();
+    }
+
+    if (ModelState.IsValid)
+    {
+        try
         {
-            if (id != groupWord.ID)
+            _context.Update(groupWord);
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!GroupWordExists(groupWord.ID))
             {
                 return NotFound();
             }
-
-            if (ModelState.IsValid)
+            else
             {
-                try
-                {
-                    _context.Update(groupWord);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!GroupWordExists(groupWord.ID))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
+                throw;
             }
-            return View(groupWord);
         }
+        // Redirect to Details instead of Index
+        return RedirectToAction("Details", new { id = groupWord.ID });
+    }
+    return View(groupWord);
+}
 
         // GET: GroupWords/Delete/5
         public async Task<IActionResult> Delete(int? id)

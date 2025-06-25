@@ -7,6 +7,7 @@
 
 <div>
     <h4>Word Details</h4>
+
     <hr />
 
     <!-- Hidden field for word ID -->
@@ -799,6 +800,26 @@ else
         tabIndex++;
     }
 </div>
+
+
+<br />
+<div class="card mt-3">
+    <div class="card-body">
+        <h5 class="card-title">Manage Word</h5>
+        <p class="card-text">You can edit or delete this word using the buttons below:</p>
+        <div class="btn-group" role="group">
+            <a asp-action="Edit" asp-route-id="@Model.WordId" class="btn btn-sm btn-primary" title="Edit this word">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+            <a asp-action="Delete" asp-route-id="@Model.WordId" class="btn btn-sm btn-danger" title="Delete this word">
+                <i class="bi bi-trash"></i> Delete
+            </a>
+        </div>
+    </div>
+</div>
+
+
+
 
 <!-- ... rest of the existing code ... -->
 @section Scripts {

@@ -148,9 +148,18 @@
 
 
             <td>
-                <a asp-action="Edit" asp-route-id="@item.WordId">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.WordId">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.WordId">Delete</a>
+                    <div class="btn-group" role="group">
+                        <a asp-action="Edit" asp-route-id="@item.WordId" class="btn btn-sm btn-primary">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                        <a asp-action="Details" asp-route-id="@item.WordId" class="btn btn-sm btn-info text-white">
+                            <i class="bi bi-info-circle"></i> Details
+                        </a>
+                        <a asp-action="Delete" asp-route-id="@item.WordId" class="btn btn-sm btn-danger">
+                            <i class="bi bi-trash"></i> Delete
+                        </a>
+                    </div>
+
             </td>
         </tr>
 }

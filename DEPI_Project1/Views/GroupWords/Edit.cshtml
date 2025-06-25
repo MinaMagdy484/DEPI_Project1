@@ -20,7 +20,9 @@
             </div>
             <div class="form-group">
                 <label asp-for="OriginLanguage" class="control-label"></label>
-                <input asp-for="OriginLanguage" class="form-control" />
+                <select asp-for="OriginLanguage" asp-items="ViewBag.Languages" class="form-control">
+                    <option value="">Select Language</option>
+                </select>
                 <span asp-validation-for="OriginLanguage" class="text-danger"></span>
             </div>
             <div class="form-group">
