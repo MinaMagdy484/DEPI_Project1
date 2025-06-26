@@ -452,28 +452,28 @@ namespace DEPI_Project1.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "744a8293-8112-475f-93c4-6b7ec05997c6",
+                            Id = "10405f4b-1954-40d5-8205-63c72f801918",
                             ConcurrencyStamp = "ADMIN",
                             Name = "Admin",
                             NormalizedName = "ADMIN"
                         },
                         new
                         {
-                            Id = "8e2d64c5-4798-44d0-bbd4-156a4d19a4cb",
+                            Id = "ff70b95e-bcfb-454a-827b-715fe557881b",
                             ConcurrencyStamp = "USER",
                             Name = "User",
                             NormalizedName = "USER"
                         },
                         new
                         {
-                            Id = "2a6c0be8-c465-4530-907f-02cbf68cb6dc",
+                            Id = "e9d22a93-b251-4d13-aa23-993d02067d1d",
                             ConcurrencyStamp = "STUDENT",
                             Name = "Student",
                             NormalizedName = "STUDENT"
                         },
                         new
                         {
-                            Id = "9918f3cd-182d-49d4-8fab-c6ad58353d34",
+                            Id = "546870f2-17cf-463d-8577-1d1d28919837",
                             ConcurrencyStamp = "INSTRUCTOR",
                             Name = "Instructor",
                             NormalizedName = "INSTRUCTOR"
@@ -620,7 +620,6 @@ namespace DEPI_Project1.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("WordId"));
 
                     b.Property<string>("Class")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("GroupID")

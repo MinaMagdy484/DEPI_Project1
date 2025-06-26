@@ -719,48 +719,50 @@ public async Task<IActionResult> Edit(int id, [Bind("ID,Name,OriginLanguage,Etym
                 };
         }
 
-        public async Task<IActionResult> SelectExistingGroupAsChild(int parentGroupID, string? search)
-        {
-            var parentGroup = await _context.Groups.FindAsync(parentGroupID);
-            ViewBag.ParentGroupID = parentGroupID;
-            ViewBag.ParentGroupName = parentGroup?.Name ?? "Unknown Group";
-            ViewBag.SearchText = search;
+        public async Task<IActionResult> SelectExistingGroupAsChild(int parentGroupID, string? search, string? groupSearchType = "contain", string? wordSearchType = "contain")
+{
+    var parentGroup = await _context.Groups.FindAsync(parentGroupID);
+    ViewBag.ParentGroupID = parentGroupID;
+    ViewBag.ParentGroupName = parentGroup?.Name ?? "Unknown Group";
+    ViewBag.SearchText = search;
+    ViewBag.GroupSearchType = groupSearchType;
+    ViewBag.WordSearchType = wordSearchType;
 
-            if (string.IsNullOrEmpty(search))
-            {
-                ViewBag.AvailableGroups = new List<GroupWord>();
-                return View();
-            }
+    if (string.IsNullOrEmpty(search))
+    {
+        ViewBag.AvailableGroups = new List<GroupWord>();
+        return View();
+    }
 
-            // Normalize the search string
-            search = NormalizeString(search);
+    // Normalize the search string
+    search = NormalizeString(search);
 
-            // Get existing child IDs to exclude them
-            var existingChildIds = await _context.GroupRelations
-                .Where(gr => gr.ParentGroupID == parentGroupID)
-                .Select(gr => gr.RelatedGroupID)
-                .ToListAsync();
+    // Get existing child IDs to exclude them
+    var existingChildIds = await _context.GroupRelations
+        .Where(gr => gr.ParentGroupID == parentGroupID)
+        .Select(gr => gr.RelatedGroupID)
+        .ToListAsync();
 
-            // Get all groups with their words, excluding the parent group itself and existing children
-            var allGroups = await _context.Groups
-                .Include(g => g.Words)
-                .Where(g => g.ID != parentGroupID && !existingChildIds.Contains(g.ID))
-                .ToListAsync();
+    // Get all groups with their words, excluding the parent group itself and existing children
+    var allGroups = await _context.Groups
+        .Include(g => g.Words)
+        .Where(g => g.ID != parentGroupID && !existingChildIds.Contains(g.ID))
+        .ToListAsync();
 
-            // Filter groups based on search criteria (group name OR words in group)
-            var filteredGroups = allGroups
-                .Where(g =>
-                    // Search in group name
-                    NormalizeString(g.Name).Contains(search) ||
-                    // Search in words within the group
-                    (g.Words != null && g.Words.Any(w => NormalizeString(w.Word_text).Contains(search)))
-                )
-                .OrderBy(g => g.Name)
-                .ToList();
+    // Filter groups based on search criteria
+    var filteredGroups = allGroups
+        .Where(g =>
+            // Search in group name based on groupSearchType
+            MatchGroupName(g.Name, search, groupSearchType) ||
+            // Search in words within the group based on wordSearchType
+            (g.Words != null && g.Words.Any(w => MatchWordText(w.Word_text, search, wordSearchType)))
+        )
+        .OrderBy(g => g.Name)
+        .ToList();
 
-            ViewBag.AvailableGroups = filteredGroups;
-            return View();
-        }
+    ViewBag.AvailableGroups = filteredGroups;
+    return View();
+}
 
 
         [HttpPost]
@@ -792,48 +794,51 @@ public async Task<IActionResult> Edit(int id, [Bind("ID,Name,OriginLanguage,Etym
             return RedirectToAction("Details", new { id = parentGroupID });
         }
 
-        public async Task<IActionResult> SelectExistingGroupAsParent(int childGroupID, string? search)
-        {
-            var childGroup = await _context.Groups.FindAsync(childGroupID);
-            ViewBag.ChildGroupID = childGroupID;
-            ViewBag.ChildGroupName = childGroup?.Name ?? "Unknown Group";
-            ViewBag.SearchText = search;
+       public async Task<IActionResult> SelectExistingGroupAsParent(int childGroupID, string? search, string? groupSearchType = "contain", string? wordSearchType = "contain")
+{
+    var childGroup = await _context.Groups.FindAsync(childGroupID);
+    ViewBag.ChildGroupID = childGroupID;
+    ViewBag.ChildGroupName = childGroup?.Name ?? "Unknown Group";
+    ViewBag.SearchText = search;
+    ViewBag.GroupSearchType = groupSearchType;
+    ViewBag.WordSearchType = wordSearchType;
 
-            if (string.IsNullOrEmpty(search))
-            {
-                ViewBag.AvailableGroups = new List<GroupWord>();
-                return View();
-            }
+    if (string.IsNullOrEmpty(search))
+    {
+        ViewBag.AvailableGroups = new List<GroupWord>();
+        return View();
+    }
 
-            // Normalize the search string
-            search = NormalizeString(search);
+    // Normalize the search string
+    search = NormalizeString(search);
 
-            // Get existing parent IDs to exclude them
-            var existingParentIds = await _context.GroupRelations
-                .Where(gr => gr.RelatedGroupID == childGroupID)
-                .Select(gr => gr.ParentGroupID)
-                .ToListAsync();
+    // Get existing parent IDs to exclude them
+    var existingParentIds = await _context.GroupRelations
+        .Where(gr => gr.RelatedGroupID == childGroupID)
+        .Select(gr => gr.ParentGroupID)
+        .ToListAsync();
 
-            // Get all groups with their words, excluding the child group itself and existing parents
-            var allGroups = await _context.Groups
-                .Include(g => g.Words)
-                .Where(g => g.ID != childGroupID && !existingParentIds.Contains(g.ID))
-                .ToListAsync();
+    // Get all groups with their words, excluding the child group itself and existing parents
+    var allGroups = await _context.Groups
+        .Include(g => g.Words)
+        .Where(g => g.ID != childGroupID && !existingParentIds.Contains(g.ID))
+        .ToListAsync();
 
-            // Filter groups based on search criteria (group name OR words in group)
-            var filteredGroups = allGroups
-                .Where(g =>
-                    // Search in group name
-                    NormalizeString(g.Name).Contains(search) ||
-                    // Search in words within the group
-                    (g.Words != null && g.Words.Any(w => NormalizeString(w.Word_text).Contains(search)))
-                )
-                .OrderBy(g => g.Name)
-                .ToList();
+    // Filter groups based on search criteria
+    var filteredGroups = allGroups
+        .Where(g =>
+            // Search in group name based on groupSearchType
+            MatchGroupName(g.Name, search, groupSearchType) ||
+            // Search in words within the group based on wordSearchType
+            (g.Words != null && g.Words.Any(w => MatchWordText(w.Word_text, search, wordSearchType)))
+        )
+        .OrderBy(g => g.Name)
+        .ToList();
 
-            ViewBag.AvailableGroups = filteredGroups;
-            return View();
-        }
+    ViewBag.AvailableGroups = filteredGroups;
+    return View();
+}
+
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -864,7 +869,48 @@ public async Task<IActionResult> Edit(int id, [Bind("ID,Name,OriginLanguage,Etym
 
             return RedirectToAction("Details", new { id = childGroupID });
         }
+// Helper methods for search matching
+private bool MatchGroupName(string groupName, string search, string searchType)
+{
+    if (string.IsNullOrEmpty(groupName)) return false;
+    
+    var normalizedGroupName = NormalizeString(groupName);
+    
+    switch (searchType)
+    {
+        case "exact":
+            return normalizedGroupName == search;
+        case "contain":
+            return normalizedGroupName.Contains(search);
+        case "start":
+            return normalizedGroupName.StartsWith(search);
+        case "end":
+            return normalizedGroupName.EndsWith(search);
+        default:
+            return normalizedGroupName.Contains(search);
+    }
+}
 
+private bool MatchWordText(string wordText, string search, string searchType)
+{
+    if (string.IsNullOrEmpty(wordText)) return false;
+    
+    var normalizedWordText = NormalizeString(wordText);
+    
+    switch (searchType)
+    {
+        case "exact":
+            return normalizedWordText == search;
+        case "contain":
+            return normalizedWordText.Contains(search);
+        case "start":
+            return normalizedWordText.StartsWith(search);
+        case "end":
+            return normalizedWordText.EndsWith(search);
+        default:
+            return normalizedWordText.Contains(search);
+    }
+}
         // GET: GroupWords/SelectExistingGroupAsChild
         //public async Task<IActionResult> SelectExistingGroupAsChild(int parentGroupID, string? search)
         //{
@@ -982,37 +1028,66 @@ public async Task<IActionResult> Edit(int id, [Bind("ID,Name,OriginLanguage,Etym
 
 
         // GET: GroupWords/SelectWordForGroup
-        public async Task<IActionResult> SelectWordForGroup(int groupId, string? search)
-        {
-            ViewBag.GroupId = groupId;
-            ViewBag.SearchText = search;
+// GET: GroupWords/SelectWordForGroup
+public async Task<IActionResult> SelectWordForGroup(int groupId, string? search, string? searchType = "contain")
+{
+    ViewBag.GroupId = groupId;
+    ViewBag.SearchText = search;
+    ViewBag.SearchType = searchType;
 
-            // Get the group name for display
-            var group = await _context.Groups.FindAsync(groupId);
-            ViewBag.GroupName = group?.Name ?? "Unknown Group";
+    // Get the group name for display
+    var group = await _context.Groups.FindAsync(groupId);
+    ViewBag.GroupName = group?.Name ?? "Unknown Group";
 
-            if (string.IsNullOrEmpty(search))
-            {
-                return View(new List<Word>());
-            }
+    if (string.IsNullOrEmpty(search))
+    {
+        return View(new List<Word>());
+    }
 
-            // Normalize the search string
-            search = NormalizeString(search);
+    // Normalize the search string
+    search = NormalizeString(search);
 
-            // Get words that are not already in this group
-            var wordsQuery = _context.Words
-                .Include(w => w.GroupWord) // Include current group info
-                .Where(w => w.GroupID != groupId || w.GroupID == null) // Exclude words already in this group
-                .ToList();
+    // Get words that are not already in this group AND have Language starting with "C-" (Coptic)
+    var wordsQuery = _context.Words
+        .Include(w => w.GroupWord) // Include current group info
+        .Where(w => (w.GroupID != groupId || w.GroupID == null) && w.Language.StartsWith("C-")) // Exclude words already in this group AND filter for Coptic languages only
+        .ToList();
 
-            // Apply contains search
-            var filteredWords = wordsQuery
-                .Where(w => NormalizeString(w.Word_text).Contains(search))
-                .OrderBy(w => w.Word_text)
-                .ToList();
+    // Apply the search type
+    List<Word> filteredWords;
+    switch (searchType)
+    {
+        case "exact":
+            // Exact match
+            filteredWords = wordsQuery.Where(w => NormalizeString(w.Word_text) == search).ToList();
+            break;
 
-            return View(filteredWords);
-        }
+        case "contain":
+            // Contains search term
+            filteredWords = wordsQuery.Where(w => NormalizeString(w.Word_text).Contains(search)).ToList();
+            break;
+
+        case "start":
+            // Starts with search term
+            filteredWords = wordsQuery.Where(w => NormalizeString(w.Word_text).StartsWith(search)).ToList();
+            break;
+
+        case "end":
+            // Ends with search term
+            filteredWords = wordsQuery.Where(w => NormalizeString(w.Word_text).EndsWith(search)).ToList();
+            break;
+
+        default:
+            // Default to contains search if no valid search type is provided
+            filteredWords = wordsQuery.Where(w => NormalizeString(w.Word_text).Contains(search)).ToList();
+            break;
+    }
+
+    // Order the results
+    filteredWords = filteredWords.OrderBy(w => w.Word_text).ToList();
+
+    return View(filteredWords);
+}
 
         // [HttpPost]
         // [ValidateAntiForgeryToken]
@@ -1210,57 +1285,63 @@ public async Task<IActionResult> Edit(int id, [Bind("ID,Name,OriginLanguage,Etym
         //    return View();
         //}
 
-        // GET: GroupWords/SelectExistingDefinitionForGroup
-        public IActionResult CreateWordForGroup(int groupId, string RootSearch = "")
-        {
-            TempData["ReturnUrl"] = Request.Headers["Referer"].ToString();
+        // GET: GroupWords/CreateWordForGroup
+public IActionResult CreateWordForGroup(int groupId, string RootSearch = "")
+{
+    TempData["ReturnUrl"] = Request.Headers["Referer"].ToString();
 
-            // Get the group information for display
-            var group = _context.Groups.Find(groupId);
-            if (group == null)
-            {
-                return NotFound();
-            }
+    // Get the group information for display
+    var group = _context.Groups.Find(groupId);
+    if (group == null)
+    {
+        return NotFound();
+    }
 
-            // Get word count for the group
-            var wordCount = _context.Words.Count(w => w.GroupID == groupId);
+    // Get word count for the group
+    var wordCount = _context.Words.Count(w => w.GroupID == groupId);
 
-            ViewBag.GroupId = groupId;
-            ViewBag.GroupName = group.Name;
-            ViewBag.GroupOrigin = group.OriginLanguage;
-            ViewBag.GroupEtymology = group.EtymologyWord;
-            ViewBag.GroupNotes = group.Notes;
-            ViewBag.GroupWordCount = wordCount;
+    ViewBag.GroupId = groupId;
+    ViewBag.GroupName = group.Name;
+    ViewBag.GroupOrigin = group.OriginLanguage;
+    ViewBag.GroupEtymology = group.EtymologyWord;
+    ViewBag.GroupNotes = group.Notes;
+    ViewBag.GroupWordCount = wordCount;
 
-            // Normalize the root search term
-            RootSearch = NormalizeString(RootSearch);
-            ViewData["RootSearch"] = RootSearch;
+    // Normalize the root search term
+    RootSearch = NormalizeString(RootSearch);
+    ViewData["RootSearch"] = RootSearch;
 
-            // Populate RootID dropdown with search filter - ONLY Coptic words with RootID = null
-            IEnumerable<Word> rootWordsQuery = _context.Words
-                .Where(w => w.RootID == null && w.Language.StartsWith("C-")) // Only Coptic root words
-                .AsEnumerable();
+    // Populate RootID dropdown with search filter - ONLY Coptic words with RootID = null
+    IEnumerable<Word> rootWordsQuery = _context.Words
+        .Where(w => w.RootID == null && w.Language.StartsWith("C-")) // Only Coptic root words
+        .AsEnumerable();
 
-            if (!string.IsNullOrEmpty(RootSearch))
-            {
-                // Apply normalization and filtering in memory
-                rootWordsQuery = rootWordsQuery.Where(w => NormalizeString(w.Word_text).Contains(RootSearch));
-            }
+    if (!string.IsNullOrEmpty(RootSearch))
+    {
+        // Apply normalization and filtering in memory
+        rootWordsQuery = rootWordsQuery.Where(w => NormalizeString(w.Word_text).Contains(RootSearch));
+    }
 
-            // Create the dropdown list
-            var rootsList = rootWordsQuery.Select(w => new {
-                WordId = (int?)w.WordId,
-                DisplayField = w.Word_text + " (" + w.Language + ", " + w.Class + ")"
-            }).ToList();
+    // Create the dropdown list
+    var rootsList = rootWordsQuery.Select(w => new {
+        WordId = (int?)w.WordId,
+        DisplayField = w.Word_text + " (" + w.Language + ", " + w.Class + ")"
+    }).ToList();
 
-            rootsList.Insert(0, new { WordId = (int?)null, DisplayField = "No Root" });
-            ViewData["RootID"] = new SelectList(rootsList, "WordId", "DisplayField");
+    rootsList.Insert(0, new { WordId = (int?)null, DisplayField = "No Root" });
+    ViewData["RootID"] = new SelectList(rootsList, "WordId", "DisplayField");
 
-            ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text");
-            ViewData["Class"] = new SelectList(GetPartOfSpeechList(), "Value", "Text");
+    // Filter languages to show only Coptic languages (starting with "C-")
+ViewData["Languages"] = new SelectList(
+    GetLanguagesList().Where(l => l.Value.StartsWith("C-")).ToList(), 
+    "Value", 
+    "Text"
+);    ViewData["Class"] = new SelectList(GetPartOfSpeechList(), "Value", "Text");
 
-            return View();
-        }
+    return View();
+}
+
+
 
         [HttpGet]
         public JsonResult SearchRoots(string searchTerm)

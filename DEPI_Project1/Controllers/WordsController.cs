@@ -876,6 +876,7 @@ namespace CopticDictionarynew1.Controllers
 
             // Populate languages for the dropdown
             ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text", word.Language);
+            ViewData["Class"] = new SelectList(GetPartOfSpeechList(), "Value", "Text");
 
             return View(word); // Return the view with the word and populated dropdowns
         }

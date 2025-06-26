@@ -33,14 +33,17 @@
             </div>
 
             <div class="form-group">
-                <label asp-for="Class"></label>
-                <select asp-for="Class" class="form-control">
-                    @foreach (var item in ViewBag.Class as SelectList)
-                    {
-                        <option value="@item.Value">@item.Text</option>
-                    }
-                </select>
-            </div>
+    <label asp-for="Class">Part of Speech (Optional)</label>
+    <select asp-for="Class" class="form-control">
+        <option value="">Select a part of speech (optional)</option>
+        @foreach (var item in ViewBag.Class as SelectList)
+        {
+            <option value="@item.Value">@item.Text</option>
+        }
+    </select>
+    <span asp-validation-for="Class" class="text-danger"></span>
+    <small class="form-text text-muted">This field is optional</small>
+</div>
 
             <!-- Root Search and Selection -->
             <div class="form-group">
