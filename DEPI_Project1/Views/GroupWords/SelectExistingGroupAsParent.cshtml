@@ -152,6 +152,7 @@
                     <tbody>
                         @foreach (var availableGroup in (List<GroupWord>)ViewBag.AvailableGroups)
                         {
+                            var groupIndex = ((List<GroupWord>)ViewBag.AvailableGroups).IndexOf(availableGroup);
                             <tr>
                                 <td>
                                     <strong>@availableGroup.Name</strong>
@@ -175,7 +176,7 @@
                                     {
                                         var searchText = ViewBag.SearchText.ToString();
                                         var wordSearchType = ViewBag.WordSearchType.ToString();
-                                        var matchingWords = availableGroup.Words.Where(w => {
+                                        var allMatchingWords = availableGroup.Words.Where(w => {
                                             var normalizedWord = w.Word_text?.ToLowerInvariant() ?? "";
                                             var normalizedSearch = searchText.ToLowerInvariant();
                                             switch (wordSearchType)
@@ -185,29 +186,61 @@
                                                 case "end": return normalizedWord.EndsWith(normalizedSearch);
                                                 default: return normalizedWord.Contains(normalizedSearch);
                                             }
-                                        }).Take(3).ToList();
+                                        }).ToList();
                                         
-                                        if (matchingWords.Any())
+                                        if (allMatchingWords.Any())
                                         {
-                                            <small class="text-success">
-                                                @string.Join(", ", matchingWords.Select(w => w.Word_text))
-                                                @{
-                                                    var totalMatching = availableGroup.Words.Count(w => {
-                                                        var normalizedWord = w.Word_text?.ToLowerInvariant() ?? "";
-                                                        var normalizedSearch = searchText.ToLowerInvariant();
-                                                        switch (wordSearchType)
-                                                        {
-                                                            case "exact": return normalizedWord == normalizedSearch;
-                                                            case "start": return normalizedWord.StartsWith(normalizedSearch);
-                                                            case "end": return normalizedWord.EndsWith(normalizedSearch);
-                                                            default: return normalizedWord.Contains(normalizedSearch);
-                                                        }
-                                                    });
-                                                }
-                                                @if (totalMatching > 3)
+                                            var previewWords = allMatchingWords.Take(3).ToList();
+                                            <div class="matching-words-container">
+                                                <!-- Preview words -->
+                                                <div class="preview-words">
+                                                    @foreach (var word in previewWords)
+                                                    {
+                                                        <span class="badge bg-success me-1 mb-1">@word.Word_text</span>
+                                                    }
+                                                </div>
+                                                
+                                                @if (allMatchingWords.Count > 3)
                                                 {
-                                                    <text>... (+@(totalMatching - 3) more)</text>
+                                                    <!-- Show more button -->
+                                                    <button class="btn btn-sm btn-outline-primary mt-1" 
+                                                            type="button" 
+                                                            data-bs-toggle="collapse" 
+                                                            data-bs-target="#matchingWords_@groupIndex" 
+                                                            aria-expanded="false">
+                                                        <i class="bi bi-chevron-down expand-icon"></i>
+                                                        <span class="toggle-text">Show @(allMatchingWords.Count - 3) more</span>
+                                                    </button>
+                                                    
+                                                    <!-- Collapsible content -->
+                                                    <div class="collapse mt-2" id="matchingWords_@groupIndex">
+                                                        <div class="card card-body p-2 bg-light">
+                                                            <div class="row">
+                                                                @foreach (var word in allMatchingWords.Skip(3))
+                                                                {
+                                                                    <div class="col-auto mb-1">
+                                                                        <span class="badge bg-success">@word.Word_text</span>
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 }
+                                                else if (allMatchingWords.Count <= 3 && allMatchingWords.Count > 0)
+                                                {
+                                                    <div class="mt-1">
+                                                        <small class="text-muted">
+                                                            <i class="bi bi-check-circle"></i> 
+                                                            @allMatchingWords.Count matching word@(allMatchingWords.Count == 1 ? "" : "s")
+                                                        </small>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <small class="text-muted">
+                                                <i class="bi bi-dash-circle"></i> No matching words
                                             </small>
                                         }
                                     }
@@ -218,8 +251,8 @@
                                         <input type="hidden" name="childGroupID" value="@ViewBag.ChildGroupID" />
                                         <input type="hidden" name="parentGroupID" value="@availableGroup.ID" />
                                         <div class="mb-2">
-                                            <select name="isCompound" class="form-control">
-                                                <option value="">Relation</option>
+                                            <select name="isCompound" class="form-control form-control-sm" >
+                                                <option value="">Select Relation</option>
                                                 <option value="true">Compound</option>
                                                 <option value="false">Derived</option>
                                             </select>
@@ -258,3 +291,62 @@ else
         <i class="bi bi-arrow-left"></i> Back to Group Details
     </a>
 </div>
+
+<style>
+    .matching-words-container {
+        max-width: 300px;
+    }
+    
+    .preview-words .badge {
+        font-size: 0.75em;
+    }
+    
+    .expand-icon {
+        transition: transform 0.3s ease;
+    }
+    
+    button[aria-expanded="true"] .expand-icon {
+        transform: rotate(180deg);
+    }
+    
+    .card.card-body {
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+    }
+    
+    .badge.bg-success {
+        background-color: #198754 !important;
+    }
+    
+    .btn-outline-primary {
+        font-size: 0.8em;
+        padding: 0.25rem 0.5rem;
+    }
+</style>
+
+<script>
+    // Add smooth animation and icon rotation
+    document.addEventListener('DOMContentLoaded', function() {
+        var collapseElements = document.querySelectorAll('[data-bs-toggle="collapse"]');
+        
+        collapseElements.forEach(function(element) {
+            element.addEventListener('click', function() {
+                var target = document.querySelector(this.getAttribute('data-bs-target'));
+                var toggleText = this.querySelector('.toggle-text');
+                var icon = this.querySelector('.expand-icon');
+                
+                // Update text based on collapse state
+                target.addEventListener('shown.bs.collapse', function() {
+                    toggleText.textContent = 'Show less';
+                });
+                
+                target.addEventListener('hidden.bs.collapse', function() {
+                    var totalWords = toggleText.textContent.match(/\d+/);
+                    if (totalWords) {
+                        toggleText.textContent = 'Show ' + totalWords[0] + ' more';
+                    }
+                });
+            });
+        });
+    });
+</script>   
