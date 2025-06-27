@@ -28,76 +28,395 @@ namespace CopticDictionarynew1.Controllers
         //}
 
         
-        public async Task<IActionResult> Index(string? search, string? searchType = "exact")
+        public async Task<IActionResult> Index(string? search, string? searchType = "contain", 
+            int? bookNumber = null, int? chapter = null, string? language = null, string? edition = null)
         {
-            if (string.IsNullOrEmpty(search))
-            {
-                return View("Index", new List<Bible>());
-            }
-
-            // Normalize the search string
-            search = NormalizeString(search);
-
-            // Store the search text and type in ViewBag
+            // Store search parameters in ViewBag
             ViewBag.SearchText = search;
             ViewBag.SearchType = searchType;
+            ViewBag.SelectedBook = bookNumber;
+            ViewBag.SelectedChapter = chapter;
+            ViewBag.SelectedLanguage = language;
+            ViewBag.SelectedEdition = edition;
 
-            // Query the Words table
-            var wordsQuery = _context.Bibles.AsQueryable();
+            // Get available filter options
+            await PopulateFilterDropdowns(bookNumber, language, edition);
 
-            var wordsList = await wordsQuery.ToListAsync();
-            // Apply the search type
-            switch (searchType)
+            var biblesQuery = _context.Bibles.AsQueryable();
+
+            // Apply filters
+            if (bookNumber.HasValue)
             {
-                case "exact":
-                    // Exact match
-                    wordsList = wordsList.Where(w => NormalizeString(w.Text) == search).ToList();
-                    break;
-
-                case "contain":
-                    // Contains search term
-                    wordsList = wordsList.Where(w => NormalizeString(w.Text).Contains(search)).ToList(); break;
-
-                case "start":
-                    // Starts with search term
-                    wordsList = wordsList.Where(w => NormalizeString(w.Text).StartsWith(search)).ToList(); break;
-
-
-                case "end":
-                    // Ends with search term
-                    wordsList = wordsList.Where(w => NormalizeString(w.Text).EndsWith(search)).ToList(); break;
-                    break;
-
-                default:
-                    // Default to contains search if no valid search type is provided
-                    wordsList = wordsList.Where(w => NormalizeString(w.Text).StartsWith(search)).ToList(); break;
-                    break;
+                biblesQuery = biblesQuery.Where(b => b.Book == bookNumber.Value);
             }
 
-            // Fetch the results
-            return View("Index", wordsList);
+            if (chapter.HasValue)
+            {
+                biblesQuery = biblesQuery.Where(b => b.Chapter == chapter.Value);
+            }
+
+            if (!string.IsNullOrEmpty(language))
+            {
+                biblesQuery = biblesQuery.Where(b => b.Language == language);
+            }
+
+            if (!string.IsNullOrEmpty(edition))
+            {
+                biblesQuery = biblesQuery.Where(b => b.Edition == edition);
+            }
+
+            // Apply text search if provided
+            if (!string.IsNullOrEmpty(search))
+            {
+                var normalizedSearch = NormalizeString(search);
+                var biblesList = await biblesQuery.ToListAsync();
+
+                switch (searchType)
+                {
+                    case "exact":
+                        biblesList = biblesList.Where(b => NormalizeString(b.Text) == normalizedSearch).ToList();
+                        break;
+                    case "contain":
+                        biblesList = biblesList.Where(b => NormalizeString(b.Text).Contains(normalizedSearch)).ToList();
+                        break;
+                    case "start":
+                        biblesList = biblesList.Where(b => NormalizeString(b.Text).StartsWith(normalizedSearch)).ToList();
+                        break;
+                    case "end":
+                        biblesList = biblesList.Where(b => NormalizeString(b.Text).EndsWith(normalizedSearch)).ToList();
+                        break;
+                    default:
+                        biblesList = biblesList.Where(b => NormalizeString(b.Text).Contains(normalizedSearch)).ToList();
+                        break;
+                }
+
+                return View("Index", biblesList.OrderBy(b => b.Book).ThenBy(b => b.Chapter).ThenBy(b => b.Verse));
+            }
+            else
+            {
+                // If no search text but filters are applied, return filtered results
+                if (bookNumber.HasValue || chapter.HasValue || !string.IsNullOrEmpty(language) || !string.IsNullOrEmpty(edition))
+                {
+                    var filteredResults = await biblesQuery
+                        .OrderBy(b => b.Book)
+                        .ThenBy(b => b.Chapter)
+                        .ThenBy(b => b.Verse)
+                        .ToListAsync();
+                    return View("Index", filteredResults);
+                }
+                else
+                {
+                    // No search and no filters - return empty list
+                    return View("Index", new List<Bible>());
+                }
+            }
         }
 
+        private async Task PopulateFilterDropdowns(int? selectedBook = null, string? selectedLanguage = null, string? selectedEdition = null)
+        {
+            // Get available books from database
+            var availableBooks = await _context.Bibles
+                .Select(b => b.Book)
+                .Distinct()
+                .OrderBy(b => b)
+                .ToListAsync();
+
+            // Create book list with Arabic names using existing BibleBookInfo model
+            var bookItems = availableBooks.Select(bookNum => new SelectListItem
+            {
+                Value = bookNum.ToString(),
+                Text = GetBookNameArabic(bookNum)
+            }).ToList();
+
+            ViewBag.BibleBooks = new SelectList(bookItems, "Value", "Text", selectedBook?.ToString());
+
+            // Get available languages
+            var availableLanguages = await _context.Bibles
+                .Select(b => b.Language)
+                .Distinct()
+                .OrderBy(l => l)
+                .ToListAsync();
+
+            ViewBag.Languages = new SelectList(availableLanguages.Select(l => new SelectListItem
+            {
+                Value = l,
+                Text = GetLanguageDisplayName(l)
+            }), "Value", "Text", selectedLanguage);
+
+            // Get available editions (filtered by language if selected)
+            var editionsQuery = _context.Bibles.AsQueryable();
+            if (!string.IsNullOrEmpty(selectedLanguage))
+            {
+                editionsQuery = editionsQuery.Where(b => b.Language == selectedLanguage);
+            }
+
+            var availableEditions = await editionsQuery
+                .Select(b => b.Edition)
+                .Distinct()
+                .OrderBy(e => e)
+                .ToListAsync();
+
+            ViewBag.Editions = new SelectList(availableEditions, selectedEdition);
+
+            // Get available chapters (filtered by book if selected)
+            if (selectedBook.HasValue)
+            {
+                var availableChapters = await _context.Bibles
+                    .Where(b => b.Book == selectedBook.Value)
+                    .Select(b => b.Chapter)
+                    .Distinct()
+                    .OrderBy(c => c)
+                    .ToListAsync();
+
+                ViewBag.Chapters = new SelectList(availableChapters);
+            }
+            else
+            {
+                ViewBag.Chapters = new SelectList(new List<int>());
+            }
+        }
+
+        private List<BibleBookInfo> GetBibleBooksList()
+        {
+            return new List<BibleBookInfo>
+            {
+                new BibleBookInfo { BookNumber = 1, EN = "Gen", AR = "تك", CB = "ⲅⲉⲛ", CS = "ⲅⲉⲛ", ARFull = "تكوين" },
+                new BibleBookInfo { BookNumber = 2, EN = "Exo", AR = "خر", CB = "ⲉⲝ", CS = "ⲉⲝ", ARFull = "خروج" },
+                new BibleBookInfo { BookNumber = 3, EN = "Lev", AR = "لا", CB = "ⲗⲉⲩ", CS = "ⲗⲉⲩ", ARFull = "لاويين" },
+                new BibleBookInfo { BookNumber = 4, EN = "Num", AR = "عد", CB = "ⲁⲣ", CS = "ⲁⲣ", ARFull = "العدد" },
+                new BibleBookInfo { BookNumber = 5, EN = "Deut", AR = "تث", CB = "ⲇⲉⲩ", CS = "ⲇⲉⲩ", ARFull = "التثنية" },
+                new BibleBookInfo { BookNumber = 6, EN = "Josh", AR = "يش", CB = "ⲓⲏ", CS = "ⲓⲏ", ARFull = "يشوع" },
+                new BibleBookInfo { BookNumber = 7, EN = "Judg", AR = "قض", CB = "ⲕⲣ", CS = "ⲕⲣ", ARFull = "القضاة" },
+                new BibleBookInfo { BookNumber = 8, EN = "Ruth", AR = "را", CB = "ⲣⲱ", CS = "ⲣⲱ", ARFull = "راعوث" },
+                new BibleBookInfo { BookNumber = 9, EN = "1Sam", AR = "1صم", CB = "ⲁ̅ ⲥⲁⲙ", CS = "ⲁ̅ ⲥⲁⲙ", ARFull = "صموئيل الأول" },
+                new BibleBookInfo { BookNumber = 10, EN = "2Sam", AR = "2صم", CB = "ⲃ̅ ⲥⲁⲙ", CS = "ⲃ̅ ⲥⲁⲙ", ARFull = "صموئيل الثاني" },
+                new BibleBookInfo { BookNumber = 11, EN = "1Kgs", AR = "1مل", CB = "ⲁ̅ ⲃⲁⲥ", CS = "ⲁ̅ ⲃⲁⲥ", ARFull = "الملوك الأول" },
+                new BibleBookInfo { BookNumber = 12, EN = "2Kgs", AR = "2مل", CB = "ⲃ̅ ⲃⲁⲥ", CS = "ⲃ̅ ⲃⲁⲥ", ARFull = "الملوك الثاني" },
+                new BibleBookInfo { BookNumber = 13, EN = "1Chr", AR = "1اخ", CB = "ⲁ̅ ⲡⲁⲣⲁ", CS = "ⲁ̅ ⲡⲁⲣⲁ", ARFull = "أخبار الأيام الأول" },
+                new BibleBookInfo { BookNumber = 14, EN = "2Chr", AR = "2اخ", CB = "ⲃ̅ ⲡⲁⲣⲁ", CS = "ⲃ̅ ⲡⲁⲣⲁ", ARFull = "أخبار الأيام الثاني" },
+                new BibleBookInfo { BookNumber = 15, EN = "Pr. of Man", AR = "صلاة منسى", CB = "ⲠⲣⲘⲛⲥ", CS = "ⲠⲣⲘⲛⲥ", ARFull = "صلاة منسى" },
+                new BibleBookInfo { BookNumber = 16, EN = "Ezra", AR = "عز", CB = "ⲉⲥⲇ", CS = "ⲉⲥⲇ", ARFull = "عزرا" },
+                new BibleBookInfo { BookNumber = 17, EN = "Neh", AR = "نح", CB = "ⲛⲉ", CS = "ⲛⲉ", ARFull = "نحميا" },
+                new BibleBookInfo { BookNumber = 18, EN = "Tob", AR = "طو", CB = "ⲧⲱⲃϩ", CS = "ⲧⲱⲃϩ", ARFull = "طوبيا" },
+                new BibleBookInfo { BookNumber = 19, EN = "Jdth", AR = "يهو", CB = "ⲓⲟⲩⲇ", CS = "ⲓⲟⲩⲇ", ARFull = "يهوذيت" },
+                new BibleBookInfo { BookNumber = 20, EN = "Est", AR = "اس", CB = "ⲉⲥⲑ", CS = "ⲉⲥⲑ", ARFull = "أستير" },
+                new BibleBookInfo { BookNumber = 21, EN = "Job", AR = "اي", CB = "ⲓⲱⲃ", CS = "ⲓⲱⲃ", ARFull = "أيوب" },
+                new BibleBookInfo { BookNumber = 22, EN = "Ps", AR = "مز", CB = "ⲯⲁⲗ", CS = "ⲯⲁⲗ", ARFull = "المزامير" },
+                new BibleBookInfo { BookNumber = 23, EN = "Prov", AR = "ام", CB = "ⲡⲁⲣ", CS = "ⲡⲁⲣ", ARFull = "الأمثال" },
+                new BibleBookInfo { BookNumber = 24, EN = "Ecc", AR = "جا", CB = "ⲉⲕⲕⲗ", CS = "ⲉⲕⲕⲗ", ARFull = "الجامعة" },
+                new BibleBookInfo { BookNumber = 25, EN = "Song", AR = "نش", CB = "ⲁⲓⲥⲙ", CS = "ⲁⲓⲥⲙ", ARFull = "نشيد الأنشاد" },
+                new BibleBookInfo { BookNumber = 26, EN = "Wis", AR = "حك", CB = "ⲥⲟⲫ", CS = "ⲥⲟⲫ", ARFull = "الحكمة" },
+                new BibleBookInfo { BookNumber = 27, EN = "Sir", AR = "سير", CB = "ⲥⲉⲓⲣ", CS = "ⲥⲉⲓⲣ", ARFull = "يشوع بن سيراخ" },
+                new BibleBookInfo { BookNumber = 28, EN = "Isa", AR = "اش", CB = "ⲏⲥ", CS = "ⲏⲥ", ARFull = "إشعياء" },
+                new BibleBookInfo { BookNumber = 29, EN = "Jer", AR = "ار", CB = "ⲓⲉⲣ", CS = "ⲓⲉⲣ", ARFull = "إرميا" },
+                new BibleBookInfo { BookNumber = 30, EN = "Lam", AR = "مرا", CB = "ⲑⲣ", CS = "ⲑⲣ", ARFull = "مراثي إرميا" },
+                new BibleBookInfo { BookNumber = 31, EN = "Bar", AR = "بار", CB = "ⲃⲁ", CS = "ⲃⲁ", ARFull = "باروخ" },
+                new BibleBookInfo { BookNumber = 32, EN = "Ezek", AR = "حز", CB = "ⲓⲉⲍ", CS = "ⲓⲉⲍ", ARFull = "حزقيال" },
+                new BibleBookInfo { BookNumber = 33, EN = "Dan", AR = "دا", CB = "ⲇⲁⲛ", CS = "ⲇⲁⲛ", ARFull = "دانيال" },
+                new BibleBookInfo { BookNumber = 34, EN = "Hos", AR = "هو", CB = "ϩⲱⲥ", CS = "ϩⲱⲥ", ARFull = "هوشع" },
+                new BibleBookInfo { BookNumber = 35, EN = "Joel", AR = "يؤ", CB = "ⲓⲱⲗ", CS = "ⲓⲱⲗ", ARFull = "يوئيل" },
+                new BibleBookInfo { BookNumber = 36, EN = "Amos", AR = "عا", CB = "ⲁⲙ", CS = "ⲁⲙ", ARFull = "عاموس" },
+                new BibleBookInfo { BookNumber = 37, EN = "Obad", AR = "عو", CB = "ⲟⲃⲇ", CS = "ⲟⲃⲇ", ARFull = "عوبديا" },
+                new BibleBookInfo { BookNumber = 38, EN = "Jonah", AR = "يون", CB = "ⲓⲱⲛ", CS = "ⲓⲱⲛ", ARFull = "يونان" },
+                new BibleBookInfo { BookNumber = 39, EN = "Mic", AR = "مي", CB = "ⲙⲓⲭ", CS = "ⲙⲓⲭ", ARFull = "ميخا" },
+                new BibleBookInfo { BookNumber = 40, EN = "Nah", AR = "نا", CB = "ⲛⲁ", CS = "ⲛⲁ", ARFull = "ناحوم" },
+                new BibleBookInfo { BookNumber = 41, EN = "Hab", AR = "حب", CB = "ⲁⲙⲃ", CS = "ⲁⲙⲃ", ARFull = "حبقوق" },
+                new BibleBookInfo { BookNumber = 42, EN = "Zeph", AR = "صف", CB = "ⲥⲁⲫ", CS = "ⲥⲁⲫ", ARFull = "صفنيا" },
+                new BibleBookInfo { BookNumber = 43, EN = "Hag", AR = "حج", CB = "ϩⲅ", CS = "ϩⲅ", ARFull = "حجي" },
+                new BibleBookInfo { BookNumber = 44, EN = "Zech", AR = "زك", CB = "ⲍⲁⲭ", CS = "ⲍⲁⲭ", ARFull = "زكريا" },
+                new BibleBookInfo { BookNumber = 45, EN = "Mal", AR = "ملا", CB = "ⲙⲁⲗⲁⲭ", CS = "ⲙⲁⲗⲁⲭ", ARFull = "ملاخي" },
+                new BibleBookInfo { BookNumber = 46, EN = "1Macc", AR = "1مك", CB = "ⲁ̅ ⲙⲁⲕ", CS = "ⲁ̅ ⲙⲁⲕ", ARFull = "مكابيين أول" },
+                new BibleBookInfo { BookNumber = 47, EN = "2Macc", AR = "2مك", CB = "ⲃ̅ ⲙⲁⲕ", CS = "ⲃ̅ ⲙⲁⲕ", ARFull = "مكابيين ثاني" },
+                new BibleBookInfo { BookNumber = 48, EN = "Mat", AR = "مت", CB = "ⲘⲀⲦ", CS = "ⲘⲀⲦ", ARFull = "متى" },
+                new BibleBookInfo { BookNumber = 49, EN = "Mar", AR = "مرا", CB = "ⳘⲀⲢ", CS = "ⳘⲀⲢ", ARFull = "مرقس" },
+                new BibleBookInfo { BookNumber = 50, EN = "Luk", AR = "لو", CB = "ⲖⲞⲨ", CS = "ⲖⲞⲨ", ARFull = "لوقا" },
+                new BibleBookInfo { BookNumber = 51, EN = "Joh", AR = "يو", CB = "ⲒⲰⲀ", CS = "ⲒⲰⲀ", ARFull = "يوحنا" },
+                new BibleBookInfo { BookNumber = 52, EN = "Act", AR = "اع", CB = "ⲠⲢⲀ", CS = "ⲠⲢⲀ", ARFull = "أعمال الرسل" },
+                new BibleBookInfo { BookNumber = 53, EN = "Rom", AR = "رو", CB = "ⲢⲰⳘ", CS = "ⲢⲰⳘ", ARFull = "رومية" },
+                new BibleBookInfo { BookNumber = 54, EN = "1Co", AR = "1كو", CB = "ⲁ̅ ⲔⲞⲢ", CS = "ⲁ̅ ⲔⲞⲢ", ARFull = "كورنثوس الأولى" },
+                new BibleBookInfo { BookNumber = 55, EN = "2Co", AR = "2كو", CB = "ⲃ̅̅ ⲔⲞⲢ", CS = "ⲃ̅̅ ⲔⲞⲢ", ARFull = "كورنثوس الثانية" },
+                new BibleBookInfo { BookNumber = 56, EN = "Gal", AR = "غل", CB = "ⲄⲀⲖ", CS = "ⲄⲀⲖ", ARFull = "غلاطية" },
+                new BibleBookInfo { BookNumber = 57, EN = "Eph", AR = "اف", CB = "ⲈⲪⲈ", CS = "ⲈⲪⲈ", ARFull = "أفسس" },
+                new BibleBookInfo { BookNumber = 58, EN = "Phi", AR = "في", CB = "ⲪⲒⲖ", CS = "ⲪⲒⲖ", ARFull = "فيلبي" },
+                new BibleBookInfo { BookNumber = 59, EN = "Col", AR = "كو", CB = "ⲔⲞⲖ", CS = "ⲔⲞⲖ", ARFull = "كولوسي" },
+                new BibleBookInfo { BookNumber = 60, EN = "1Th", AR = "1تس", CB = "ⲁ̅ ⲐⲈⲤ", CS = "ⲁ̅ ⲐⲈⲤ", ARFull = "تسالونيكي الأولى" },
+                new BibleBookInfo { BookNumber = 61, EN = "2Th", AR = "2تس", CB = "ⲃ̅ ⲐⲈⲤ", CS = "ⲃ̅ ⲐⲈⲤ", ARFull = "تسالونيكي الثانية" },
+                new BibleBookInfo { BookNumber = 62, EN = "1Ti", AR = "1تي", CB = "ⲁ̅ ⲦⲒⳘ", CS = "ⲁ̅ ⲦⲒⳘ", ARFull = "تيموثاوس الأولى" },
+                new BibleBookInfo { BookNumber = 63, EN = "2Ti", AR = "2تي", CB = "ⲃ̅ ⲦⲒⳘ", CS = "ⲃ̅ ⲦⲒⳘ", ARFull = "تيموثاوس الثانية" },
+                new BibleBookInfo { BookNumber = 64, EN = "Tit", AR = "تي", CB = "ⲦⲒⲦ", CS = "ⲦⲒⲦ", ARFull = "تيطس" },
+                new BibleBookInfo { BookNumber = 65, EN = "Phm", AR = "فل", CB = "ⲪⲒⲘ", CS = "ⲪⲒⲘ", ARFull = "فليمون" },
+                new BibleBookInfo { BookNumber = 66, EN = "Heb", AR = "عب", CB = "ϩⲉⲃ", CS = "ϩⲉⲃ", ARFull = "عبرانيين" },
+                new BibleBookInfo { BookNumber = 67, EN = "Jas", AR = "يع", CB = "ⲒⲀⲔ", CS = "ⲒⲀⲔ", ARFull = "يعقوب" },
+                new BibleBookInfo { BookNumber = 68, EN = "1Pe", AR = "1بط", CB = "ⲁ̅ ⲠⲈⲦ", CS = "ⲁ̅ ⲠⲈⲦ", ARFull = "بطرس الأولى" },
+                new BibleBookInfo { BookNumber = 69, EN = "2Pe", AR = "2بط", CB = "ⲃ̅ ⲠⲈⲦ", CS = "ⲃ̅ ⲠⲈⲦ", ARFull = "بطرس الثانية" },
+                new BibleBookInfo { BookNumber = 70, EN = "1Jn", AR = "1يو", CB = "ⲁ̅ ⲒⲰⲀ", CS = "ⲁ̅ ⲒⲰⲀ", ARFull = "يوحنا الأولى" },
+                new BibleBookInfo { BookNumber = 71, EN = "2Jn", AR = "2يو", CB = "ⲃ̅ ⲒⲰⲀ", CS = "ⲃ̅ ⲒⲰⲀ", ARFull = "يوحنا الثانية" },
+                new BibleBookInfo { BookNumber = 72, EN = "3Jn", AR = "3يو", CB = "ⲅ̅ ⲒⲰⲀ", CS = "ⲅ̅ ⲒⲰⲀ", ARFull = "يوحنا الثالثة" },
+                new BibleBookInfo { BookNumber = 73, EN = "Jud", AR = "يه", CB = "ⲒⲞⲨ", CS = "ⲒⲞⲨ", ARFull = "يهوذا" },
+                new BibleBookInfo { BookNumber = 74, EN = "Rev", AR = "رؤ", CB = "ⲀⲠⲞ", CS = "ⲀⲠⲞ", ARFull = "رؤيا يوحنا" }
+            };
+        }
+
+        // Get Arabic book name with number using your existing BibleBookInfo model
+        private string GetBookNameArabic(int bookNumber)
+        {
+            var books = GetBibleBooksList();
+            var book = books.FirstOrDefault(b => b.BookNumber == bookNumber);
+            
+            if (book != null)
+            {
+                return $"{book.BookNumber}. {book.ARFull} ({book.AR})";
+            }
+            
+            return $"كتاب {bookNumber}";
+        }
+
+        // Rest of the methods remain the same as before...
+        private string GetLanguageDisplayName(string languageCode)
+        {
+            var languageNames = new Dictionary<string, string>
+            {
+                { "AR", "العربية (Arabic)" }, 
+                { "FR", "الفرنسية (French)" }, 
+                { "EN", "الإنجليزية (English)" }, 
+                { "RU", "الروسية (Russian)" },
+                { "DE", "الألمانية (German)" }, 
+                { "IT", "الإيطالية (Italian)" }, 
+                { "HE", "العبرية (Hebrew)" }, 
+                { "GR", "اليونانية (Greek)" },
+                { "ARC", "الآرامية (Aramaic)" }, 
+                { "EG", "المصرية القديمة (Egyptian)" }, 
+                { "C-B", "القبطية - البحيرية (Coptic - Bohairic)" },
+                { "C-S", "القبطية - الصعيدية (Coptic - Sahidic)" }, 
+                { "C-Sa", "القبطية - السخميمية (Coptic - Sakhmimic)" }, 
+                { "C-Sf", "القبطية - الفيومية الفرعية (Coptic - Subfayyumic)" },
+                { "C-A", "القبطية - الأخميمية (Coptic - Akhmimic)" }, 
+                { "C-sA", "القبطية - الأخميمية الفرعية (Coptic - sub-Akhmimic)" }, 
+                { "C-F", "القبطية - الفيومية (Coptic - Fayyumic)" },
+                { "C-Fb", "القبطية - الفيومية ب (Coptic - Fayyumic B)" }, 
+                { "C-O", "القبطية - الأوكسيرهينخية (Coptic - Oxyrhynchite)" }, 
+                { "C-NH", "القبطية - نجع حمادي (Coptic - Nag Hammadi)" }
+            };
+
+            return languageNames.ContainsKey(languageCode) ? languageNames[languageCode] : languageCode;
+        }
+
+        // AJAX endpoints and other methods remain the same...
+        [HttpGet]
+        public async Task<JsonResult> GetAvailableEditions(string? language = null)
+        {
+            try
+            {
+                var query = _context.Bibles.AsQueryable();
+
+                if (!string.IsNullOrEmpty(language))
+                {
+                    query = query.Where(b => b.Language == language);
+                }
+
+                var editions = await query
+                    .Select(b => b.Edition)
+                    .Distinct()
+                    .OrderBy(e => e)
+                    .ToListAsync();
+
+                return Json(new { success = true, editions = editions });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<JsonResult> GetAvailableChapters(int? bookNumber = null, string? language = null, string? edition = null)
+        {
+            try
+            {
+                var query = _context.Bibles.AsQueryable();
+
+                if (bookNumber.HasValue)
+                {
+                    query = query.Where(b => b.Book == bookNumber.Value);
+                }
+
+                if (!string.IsNullOrEmpty(language))
+                {
+                    query = query.Where(b => b.Language == language);
+                }
+
+                if (!string.IsNullOrEmpty(edition))
+                {
+                    query = query.Where(b => b.Edition == edition);
+                }
+
+                var chapters = await query
+                    .Select(b => b.Chapter)
+                    .Distinct()
+                    .OrderBy(c => c)
+                    .ToListAsync();
+
+                return Json(new { success = true, chapters = chapters });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<JsonResult> GetAvailableVerses(int? bookNumber = null, int? chapter = null, string? language = null, string? edition = null)
+        {
+            try
+            {
+                var query = _context.Bibles.AsQueryable();
+
+                if (bookNumber.HasValue)
+                {
+                    query = query.Where(b => b.Book == bookNumber.Value);
+                }
+
+                if (chapter.HasValue)
+                {
+                    query = query.Where(b => b.Chapter == chapter.Value);
+                }
+
+                if (!string.IsNullOrEmpty(language))
+                {
+                    query = query.Where(b => b.Language == language);
+                }
+
+                if (!string.IsNullOrEmpty(edition))
+                {
+                    query = query.Where(b => b.Edition == edition);
+                }
+
+                var verses = await query
+                    .Select(b => b.Verse)
+                    .Distinct()
+                    .OrderBy(v => v)
+                    .ToListAsync();
+
+                return Json(new { success = true, verses = verses });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
 
         private string NormalizeString(string input)
         {
             if (string.IsNullOrEmpty(input)) return input;
-
-            // Convert to lowercase
             input = input.ToLowerInvariant();
-
-            // Optional: Remove diacritics (accents)
             input = RemoveDiacritics(input);
-
             return input;
         }
-
 
         private string RemoveDiacritics(string text)
         {
             if (string.IsNullOrEmpty(text)) return text;
 
-            // Normalize to form D (decomposed characters), remove non-spacing marks
             var normalizedString = text.Normalize(NormalizationForm.FormD);
             var stringBuilder = new StringBuilder();
 
@@ -113,7 +432,7 @@ namespace CopticDictionarynew1.Controllers
             return stringBuilder.ToString().Normalize(NormalizationForm.FormC);
         }
 
-        // GET: Bibles/Details/5
+        // Standard CRUD operations remain the same...
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
@@ -131,15 +450,11 @@ namespace CopticDictionarynew1.Controllers
             return View(bible);
         }
 
-        // GET: Bibles/Create
         public IActionResult Create()
         {
             return View();
         }
 
-        // POST: Bibles/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("BibleID,Book,Chapter,Verse,Language,Edition,Text,Pronunciation,Notes")] Bible bible)
@@ -153,7 +468,6 @@ namespace CopticDictionarynew1.Controllers
             return View(bible);
         }
 
-        // GET: Bibles/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -169,9 +483,6 @@ namespace CopticDictionarynew1.Controllers
             return View(bible);
         }
 
-        // POST: Bibles/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("BibleID,Book,Chapter,Verse,Language,Edition,Text,Pronunciation,Notes")] Bible bible)
@@ -204,7 +515,6 @@ namespace CopticDictionarynew1.Controllers
             return View(bible);
         }
 
-        // GET: Bibles/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -222,7 +532,6 @@ namespace CopticDictionarynew1.Controllers
             return View(bible);
         }
 
-        // POST: Bibles/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
