@@ -196,7 +196,7 @@
                                                 <div class="preview-words">
                                                     @foreach (var word in previewWords)
                                                     {
-                                                        <span class="badge bg-success me-1 mb-1">@word.Word_text</span>
+                                                        <span class="badge bg-success">@word.Word_text (@word.Language ,@word.Class )</span>
                                                     }
                                                 </div>
                                                 
@@ -219,7 +219,7 @@
                                                                 @foreach (var word in allMatchingWords.Skip(3))
                                                                 {
                                                                     <div class="col-auto mb-1">
-                                                                        <span class="badge bg-success">@word.Word_text</span>
+                                                                        <span class="badge bg-success">@word.Word_text (@word.Language ,@word.Class )</span>
                                                                     </div>
                                                                 }
                                                             </div>

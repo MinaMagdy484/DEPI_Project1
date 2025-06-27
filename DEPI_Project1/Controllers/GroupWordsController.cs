@@ -28,56 +28,40 @@ namespace CopticDictionarynew1.Controllers
         //}
 
 
-        public async Task<IActionResult> Index(string? search, string? searchType = "exact")
-        {
-            if (string.IsNullOrEmpty(search))
-            {
-                return View("Index", new List<GroupWord>());
-            }
+       public async Task<IActionResult> Index(string? search, string? groupSearchType = "contain", string? wordSearchType = "contain")
+{
+    // Store the search parameters in ViewBag
+    ViewBag.SearchText = search;
+    ViewBag.GroupSearchType = groupSearchType;
+    ViewBag.WordSearchType = wordSearchType;
 
-            // Normalize the search string
-            search = NormalizeString(search);
+    if (string.IsNullOrEmpty(search))
+    {
+        // Return empty list when no search is provided
+        return View("Index", new List<GroupWord>());
+    }
 
-            // Store the search text and type in ViewBag
-            ViewBag.SearchText = search;
-            ViewBag.SearchType = searchType;
+    // Normalize the search string
+    search = NormalizeString(search);
 
-            // Query the Words table
-            var wordsQuery = _context.Groups.AsQueryable();
+    // Get all groups with their words
+    var allGroupsWithWords = await _context.Groups
+        .Include(g => g.Words)
+        .ToListAsync();
 
-            var wordsList = await wordsQuery.ToListAsync();
-            // Apply the search type
-            switch (searchType)
-            {
-                case "exact":
-                    // Exact match
-                    wordsList = wordsList.Where(w => NormalizeString(w.Name) == search).ToList();
-                    break;
+    // Filter groups based on search criteria
+    var filteredGroups = allGroupsWithWords
+        .Where(g =>
+            // Search in group name based on groupSearchType
+            MatchGroupName(g.Name, search, groupSearchType) ||
+            // Search in words within the group based on wordSearchType
+            (g.Words != null && g.Words.Any(w => MatchWordText(w.Word_text, search, wordSearchType)))
+        )
+        .OrderBy(g => g.Name)
+        .ToList();
 
-                case "contain":
-                    // Contains search term
-                    wordsList = wordsList.Where(w => NormalizeString(w.Name).Contains(search)).ToList(); break;
-
-                case "start":
-                    // Starts with search term
-                    wordsList = wordsList.Where(w => NormalizeString(w.Name).StartsWith(search)).ToList(); break;
-
-
-                case "end":
-                    // Ends with search term
-                    wordsList = wordsList.Where(w => NormalizeString(w.Name).EndsWith(search)).ToList(); break;
-                    break;
-
-                default:
-                    // Default to contains search if no valid search type is provided
-                    wordsList = wordsList.Where(w => NormalizeString(w.Name).StartsWith(search)).ToList(); break;
-                    break;
-            }
-
-            // Fetch the results
-            return View("Index", wordsList);
-        }
-
+    return View("Index", filteredGroups);
+}
 
         private string NormalizeString(string input)
         {
