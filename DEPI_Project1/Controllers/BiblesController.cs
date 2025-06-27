@@ -22,7 +22,7 @@ namespace CopticDictionarynew1.Controllers
         }
 
         public async Task<IActionResult> Index(string? search, string? searchType = "contain", 
-            int? bookNumber = null, int? chapter = null, string? language = null, string? edition = null)
+            int? bookNumber = null, int? chapter = null, string? language = null, string? edition = null, int? verse = null)
         {
             // Store search parameters in ViewBag
             ViewBag.SearchText = search;
@@ -31,9 +31,10 @@ namespace CopticDictionarynew1.Controllers
             ViewBag.SelectedChapter = chapter;
             ViewBag.SelectedLanguage = language;
             ViewBag.SelectedEdition = edition;
+            ViewBag.SelectedVerse = verse;
 
             // Get available filter options
-            await PopulateFilterDropdowns(bookNumber, language, edition);
+            await PopulateFilterDropdowns(bookNumber, chapter, language, edition, verse);
 
             var biblesQuery = _context.Bibles.AsQueryable();
 
@@ -56,6 +57,11 @@ namespace CopticDictionarynew1.Controllers
             if (!string.IsNullOrEmpty(edition))
             {
                 biblesQuery = biblesQuery.Where(b => b.Edition == edition);
+            }
+
+            if (verse.HasValue)
+            {
+                biblesQuery = biblesQuery.Where(b => b.Verse == verse.Value);
             }
 
             // Apply text search if provided
@@ -134,7 +140,8 @@ namespace CopticDictionarynew1.Controllers
         }
 
         // Update PopulateFilterDropdowns method
-        private async Task PopulateFilterDropdowns(int? selectedBook = null, string? selectedLanguage = null, string? selectedEdition = null)
+        private async Task PopulateFilterDropdowns(int? selectedBook = null, int? selectedChapter = null,
+            string? selectedLanguage = null, string? selectedEdition = null, int? selectedVerse = null)
         {
             // Get available books from database
             var availableBooks = await _context.Bibles
@@ -195,6 +202,35 @@ namespace CopticDictionarynew1.Controllers
             else
             {
                 ViewBag.Chapters = new SelectList(new List<int>());
+            }
+
+            // Add verses dropdown if chapter is selected
+            if (selectedBook.HasValue && selectedChapter.HasValue)
+            {
+                var versesQuery = _context.Bibles
+                    .Where(b => b.Book == selectedBook.Value && b.Chapter == selectedChapter.Value);
+                    
+                if (!string.IsNullOrEmpty(selectedLanguage))
+                {
+                    versesQuery = versesQuery.Where(b => b.Language == selectedLanguage);
+                }
+                
+                if (!string.IsNullOrEmpty(selectedEdition))
+                {
+                    versesQuery = versesQuery.Where(b => b.Edition == selectedEdition);
+                }
+
+                var availableVerses = await versesQuery
+                    .Select(b => b.Verse)
+                    .Distinct()
+                    .OrderBy(v => v)
+                    .ToListAsync();
+
+                ViewBag.Verses = new SelectList(availableVerses, selectedVerse);
+            }
+            else
+            {
+                ViewBag.Verses = new SelectList(new List<int>());
             }
 
             // Add book names dictionary to ViewBag for use in the view
@@ -317,11 +353,16 @@ namespace CopticDictionarynew1.Controllers
 
         // AJAX endpoints for dynamic filtering - Enhanced versions
         [HttpGet]
-        public async Task<JsonResult> GetAvailableEditions(string? language = null)
+        public async Task<JsonResult> GetAvailableEditions(int? bookNumber = null, string? language = null)
         {
             try
             {
                 var query = _context.Bibles.AsQueryable();
+
+                if (bookNumber.HasValue)
+                {
+                    query = query.Where(b => b.Book == bookNumber.Value);
+                }
 
                 if (!string.IsNullOrEmpty(language))
                 {
@@ -458,6 +499,39 @@ namespace CopticDictionarynew1.Controllers
             }
         }
 
+        // Get available languages for a book
+        [HttpGet]
+        public async Task<JsonResult> GetAvailableLanguages(int? bookNumber = null)
+        {
+            try
+            {
+                var query = _context.Bibles.AsQueryable();
+
+                if (bookNumber.HasValue)
+                {
+                    query = query.Where(b => b.Book == bookNumber.Value);
+                }
+
+                var languages = await query
+                    .Select(b => b.Language)
+                    .Distinct()
+                    .OrderBy(l => l)
+                    .ToListAsync();
+
+                var languagesList = languages.Select(lang => new 
+                {
+                    value = lang,
+                    text = GetLanguageDisplayName(lang)
+                }).ToList();
+
+                return Json(new { success = true, languages = languagesList });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
         private string NormalizeString(string input)
         {
             if (string.IsNullOrEmpty(input)) return input;
@@ -495,19 +569,70 @@ namespace CopticDictionarynew1.Controllers
 
             var bible = await _context.Bibles
                 .FirstOrDefaultAsync(m => m.BibleID == id);
+    
             if (bible == null)
             {
                 return NotFound();
             }
 
+            // Get all related verses with the same book, chapter, and verse (including this one)
+            var relatedVerses = await _context.Bibles
+                .Where(b => b.Book == bible.Book && 
+                           b.Chapter == bible.Chapter && 
+                           b.Verse == bible.Verse)
+                .OrderBy(b => b.Language)
+                .ThenBy(b => b.Edition)
+                .ToListAsync();
+
+            // Get the book name for display
+            string bookName = GetBookNameArabic(bible.Book);
+            string bookNameEN = GetBibleBooksList().FirstOrDefault(b => b.BookNumber == bible.Book)?.EN ?? $"Book {bible.Book}";
+
+            // Pass data to view using ViewBag
+            ViewBag.BookName = bookName;
+            ViewBag.BookNameEN = bookNameEN;
+            ViewBag.RelatedVerses = relatedVerses;
+            ViewBag.LanguageNames = GetLanguagesList().ToDictionary(l => l.Value, l => l.Text);
+
             return View(bible);
+        }
+
+        // Add this method to BiblesController class
+        private List<SelectListItem> GetLanguagesList()
+        {
+            return new List<SelectListItem>
+            {
+                new SelectListItem { Value = "AR", Text = "Arabic" },
+                new SelectListItem { Value = "FR", Text = "French" },
+                new SelectListItem { Value = "EN", Text = "English" },
+                new SelectListItem { Value = "RU", Text = "Russian" },
+                new SelectListItem { Value = "DE", Text = "German" },
+                new SelectListItem { Value = "IT", Text = "Italian" },
+                new SelectListItem { Value = "HE", Text = "Hebrew" },
+                new SelectListItem { Value = "GR", Text = "Greek" },
+                new SelectListItem { Value = "ARC", Text = "Aramaic" },
+                new SelectListItem { Value = "EG", Text = "Egyptian" },
+                new SelectListItem { Value = "C-B", Text = "Coptic - B" },
+                new SelectListItem { Value = "C-S", Text = "Coptic - S" },
+                new SelectListItem { Value = "C-Sa", Text = "Coptic - Sa" },
+                new SelectListItem { Value = "C-Sf", Text = "Coptic - Sf" },
+                new SelectListItem { Value = "C-A", Text = "Coptic - A" },
+                new SelectListItem { Value = "C-sA", Text = "Coptic - sA" },
+                new SelectListItem { Value = "C-F", Text = "Coptic - F" },
+                new SelectListItem { Value = "C-Fb", Text = "Coptic - Fb" },
+                new SelectListItem { Value = "C-O", Text = "Coptic - O" },
+                new SelectListItem { Value = "C-NH", Text = "Coptic - NH" }
+            };
         }
 
         public IActionResult Create()
         {
+            ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text");
+            ViewData["BibleBooks"] = new SelectList(GetBibleBooksList().Select(b => new { Value = b.BookNumber, Text = $"{b.BookNumber}. {b.ARFull} ({b.AR})" }), "Value", "Text");
             return View();
         }
 
+        // Update the Create POST action to redirect to Details
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("BibleID,Book,Chapter,Verse,Language,Edition,Text,Pronunciation,Notes")] Bible bible)
@@ -516,8 +641,11 @@ namespace CopticDictionarynew1.Controllers
             {
                 _context.Add(bible);
                 await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                // Redirect to Details instead of Index
+                return RedirectToAction("Details", new { id = bible.BibleID });
             }
+            ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text", bible.Language);
+            ViewData["BibleBooks"] = new SelectList(GetBibleBooksList().Select(b => new { Value = b.BookNumber, Text = $"{b.BookNumber}. {b.ARFull} ({b.AR})" }), "Value", "Text", bible.Book);
             return View(bible);
         }
 
@@ -533,9 +661,12 @@ namespace CopticDictionarynew1.Controllers
             {
                 return NotFound();
             }
+            ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text", bible.Language);
+            ViewData["BibleBooks"] = new SelectList(GetBibleBooksList().Select(b => new { Value = b.BookNumber, Text = $"{b.BookNumber}. {b.ARFull} ({b.AR})" }), "Value", "Text", bible.Book);
             return View(bible);
         }
 
+        // Update the Edit POST action to redirect to Details
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("BibleID,Book,Chapter,Verse,Language,Edition,Text,Pronunciation,Notes")] Bible bible)
@@ -551,6 +682,8 @@ namespace CopticDictionarynew1.Controllers
                 {
                     _context.Update(bible);
                     await _context.SaveChangesAsync();
+                    // Redirect to Details instead of Index
+                    return RedirectToAction("Details", new { id = bible.BibleID });
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -563,8 +696,9 @@ namespace CopticDictionarynew1.Controllers
                         throw;
                     }
                 }
-                return RedirectToAction(nameof(Index));
             }
+            ViewData["Languages"] = new SelectList(GetLanguagesList(), "Value", "Text", bible.Language);
+            ViewData["BibleBooks"] = new SelectList(GetBibleBooksList().Select(b => new { Value = b.BookNumber, Text = $"{b.BookNumber}. {b.ARFull} ({b.AR})" }), "Value", "Text", bible.Book);
             return View(bible);
         }
 
@@ -585,24 +719,47 @@ namespace CopticDictionarynew1.Controllers
             return View(bible);
         }
 
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            var bible = await _context.Bibles.FindAsync(id);
-            if (bible != null)
-            {
-                _context.Bibles.Remove(bible);
-            }
-
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
+        
 
         private bool BibleExists(int id)
         {
             return _context.Bibles.Any(e => e.BibleID == id);
         }
+
+
+
+        [HttpPost, ActionName("DeleteConfirmed")]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> DeleteConfirmed(int id)
+{
+    var bible = await _context.Bibles.FindAsync(id);
+    if (bible == null)
+    {
+        return NotFound();
+    }
+    
+    // Store details for redirection after delete
+    int book = bible.Book;
+    int chapter = bible.Chapter;
+    int verse = bible.Verse;
+    
+    _context.Bibles.Remove(bible);
+    await _context.SaveChangesAsync();
+    
+    // Check if there are other versions of this verse
+    var relatedVerse = await _context.Bibles
+        .Where(b => b.Book == book && b.Chapter == chapter && b.Verse == verse)
+        .FirstOrDefaultAsync();
+    
+    if (relatedVerse != null)
+    {
+        // If another version exists, redirect to its details page
+        return RedirectToAction(nameof(Details), new { id = relatedVerse.BibleID });
+    }
+    
+    // If no more versions exist, redirect to index
+    return RedirectToAction(nameof(Index));
+}
     }
 
     // Helper class for Bible Book Information

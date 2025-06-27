@@ -58,8 +58,8 @@
                 Group
             </dt>
             <dd class="col-sm-10">
-                @*                 <strong>@Model.GroupWord.Name</strong>
- *@                
+                @*<strong>@Model.GroupWord.Name</strong>*@
+
                 <a asp-controller="GroupWords" asp-action="Details" asp-route-id="@Model.GroupID">@Model.GroupWord.Name </a>
                 @if (!string.IsNullOrEmpty(Model.GroupWord.Etymology))
                 {

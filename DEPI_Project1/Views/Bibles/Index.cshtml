@@ -91,26 +91,76 @@
 
                 <hr />
 
-                <!-- Filters Row -->
+                <!-- Filters Row - Updated with proper cascade logic -->
                 <div class="row mb-3">
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label for="bookNumber" class="form-label">Bible Book:</label>
-                        <select name="bookNumber" id="bookSelect" class="form-select">
-                            <option value="">-- All Books --</option>
-                            @foreach (var book in ViewBag.BibleBooks as SelectList)
-                            {
-                                if (ViewBag.SelectedBook?.ToString() == book.Value)
+                        <div class="position-relative">
+                            <input type="text" id="bookSearch" class="form-control mb-2" placeholder="Search for a Bible book..." />
+                            <select name="bookNumber" id="bookSelect" class="form-select">
+                                <option value="">-- All Books --</option>
+                                @foreach (var book in ViewBag.BibleBooks as SelectList)
                                 {
-                                    <option value="@book.Value" selected>@book.Text</option>
+                                    if (ViewBag.SelectedBook?.ToString() == book.Value)
+                                    {
+                                        <option value="@book.Value" data-search="@book.Text.ToLower()" selected>@book.Text</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@book.Value" data-search="@book.Text.ToLower()">@book.Text</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <small class="form-text text-muted">Type to search or select from dropdown</small>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="language" class="form-label">Language:</label>
+                        <select name="language" id="languageSelect" class="form-select">
+                            <option value="">-- All Languages --</option>
+                            @foreach (var language in ViewBag.Languages as SelectList)
+                            {
+                                if (ViewBag.SelectedLanguage == language.Value)
+                                {
+                                    <option value="@language.Value" selected>@language.Text</option>
                                 }
                                 else
                                 {
-                                    <option value="@book.Value">@book.Text</option>
+                                    <option value="@language.Value">@language.Text</option>
                                 }
                             }
                         </select>
+                        <div id="languageLoading" class="d-none">
+                            <small class="text-muted">
+                                <i class="spinner-border spinner-border-sm me-1" role="status"></i>
+                                Loading languages...
+                            </small>
+                        </div>
                     </div>
                     <div class="col-md-3">
+                        <label for="edition" class="form-label">Edition:</label>
+                        <select name="edition" id="editionSelect" class="form-select">
+                            <option value="">-- All Editions --</option>
+                            @foreach (var edition in ViewBag.Editions as SelectList)
+                            {
+                                if (ViewBag.SelectedEdition == edition.Value)
+                                {
+                                    <option value="@edition.Value" selected>@edition.Value</option>
+                                }
+                                else
+                                {
+                                    <option value="@edition.Value">@edition.Value</option>
+                                }
+                            }
+                        </select>
+                        <div id="editionLoading" class="d-none">
+                            <small class="text-muted">
+                                <i class="spinner-border spinner-border-sm me-1" role="status"></i>
+                                Loading editions...
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
                         <label for="chapter" class="form-label">Chapter:</label>
                         <select name="chapter" id="chapterSelect" class="form-select">
                             <option value="">-- All Chapters --</option>
@@ -133,43 +183,29 @@
                             </small>
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <label for="language" class="form-label">Language:</label>
-                        <select name="language" id="languageSelect" class="form-select">
-                            <option value="">-- All Languages --</option>
-                            @foreach (var language in ViewBag.Languages as SelectList)
+                    <div class="col-md-2">
+                        <label for="verse" class="form-label">Verse:</label>
+                        <select name="verse" id="verseSelect" class="form-select">
+                            <option value="">-- All Verses --</option>
+                            @if (ViewBag.Verses is SelectList verses)
                             {
-                                if (ViewBag.SelectedLanguage == language.Value)
+                                @foreach (var verse in verses)
                                 {
-                                    <option value="@language.Value" selected>@language.Text</option>
-                                }
-                                else
-                                {
-                                    <option value="@language.Value">@language.Text</option>
+                                    if (ViewBag.SelectedVerse?.ToString() == verse.Value)
+                                    {
+                                        <option value="@verse.Value" selected>Verse @verse.Value</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@verse.Value">Verse @verse.Value</option>
+                                    }
                                 }
                             }
                         </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="edition" class="form-label">Edition:</label>
-                        <select name="edition" id="editionSelect" class="form-select">
-                            <option value="">-- All Editions --</option>
-                            @foreach (var edition in ViewBag.Editions as SelectList)
-                            {
-                                if (ViewBag.SelectedEdition == edition.Value)
-                                {
-                                    <option value="@edition.Value" selected>@edition.Value</option>
-                                }
-                                else
-                                {
-                                    <option value="@edition.Value">@edition.Value</option>
-                                }
-                            }
-                        </select>
-                        <div id="editionLoading" class="d-none">
+                        <div id="verseLoading" class="d-none">
                             <small class="text-muted">
                                 <i class="spinner-border spinner-border-sm me-1" role="status"></i>
-                                Loading editions...
+                                Loading verses...
                             </small>
                         </div>
                     </div>
@@ -402,11 +438,7 @@
                                                class="btn btn-sm btn-outline-secondary" title="Edit">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
-                                            <a asp-action="Delete" asp-route-id="@item.BibleID" 
-                                               class="btn btn-sm btn-outline-danger" title="Delete"
-                                               onclick="return confirm('Are you sure you want to delete this Bible verse?');">
-                                                <i class="bi bi-trash"></i>
-                                            </a>
+
                                         </div>
                                     </td>
                                 </tr>
@@ -522,238 +554,432 @@
     }
 </style>
 
-<!-- JavaScript for Dynamic Filtering -->
-<!-- Updated JavaScript section for Index.cshtml -->
+<!-- JavaScript for Dynamic Filtering - Enhanced Cascade Logic -->
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Elements
-        const bookSelect = document.getElementById('bookSelect');
-        const languageSelect = document.getElementById('languageSelect');
-        const editionSelect = document.getElementById('editionSelect');
-        const chapterSelect = document.getElementById('chapterSelect');
+document.addEventListener('DOMContentLoaded', function() {
+    // Elements
+    const bookSearch = document.getElementById('bookSearch');
+    const bookSelect = document.getElementById('bookSelect');
+    const languageSelect = document.getElementById('languageSelect');
+    const editionSelect = document.getElementById('editionSelect');
+    const chapterSelect = document.getElementById('chapterSelect');
+    const verseSelect = document.getElementById('verseSelect');
+    
+    const languageLoading = document.getElementById('languageLoading');
+    const editionLoading = document.getElementById('editionLoading');
+    const chapterLoading = document.getElementById('chapterLoading');
+    const verseLoading = document.getElementById('verseLoading');
+    
+    // Store original options for all dropdowns
+    const bookOptions = Array.from(bookSelect.options);
+    const languageOptions = Array.from(languageSelect.options);
+    const editionOptions = Array.from(editionSelect.options);
+    
+    // Remember current selections
+    let currentBookValue = bookSelect.value;
+    let currentLanguageValue = languageSelect.value;
+    let currentEditionValue = editionSelect.value;
+    let currentChapterValue = chapterSelect.value;
+    let currentVerseValue = verseSelect ? verseSelect.value : '';
 
-        const editionLoading = document.getElementById('editionLoading');
-        const chapterLoading = document.getElementById('chapterLoading');
-
-        // Load available books based on language and edition
-        function loadBooks() {
-            const language = languageSelect.value;
-            const edition = editionSelect.value;
-            const currentBookValue = bookSelect.value; // Remember current selection
-
-            let url = '/Bibles/GetAvailableBooks';
-            const params = [];
-
-            if (language) params.push(`language=${encodeURIComponent(language)}`);
-            if (edition) params.push(`edition=${encodeURIComponent(edition)}`);
-
-            if (params.length > 0) {
-                url += '?' + params.join('&');
-            }
-
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.books && data.books.length > 0) {
-                        bookSelect.innerHTML = '<option value="">-- All Books --</option>';
-
-                        data.books.forEach(book => {
-                            const option = document.createElement('option');
-                            option.value = book.value;
-                            option.textContent = book.text;
-                            if (book.value.toString() === currentBookValue) {
-                                option.selected = true;
-                            }
-                            bookSelect.appendChild(option);
-                        });
-
-                        // If we still have a book selected after refresh, reload chapters
-                        if (bookSelect.value) {
-                            loadChapters();
-                        }
-                    } else {
-                        bookSelect.innerHTML = '<option value="">-- No Books Available --</option>';
-                        chapterSelect.innerHTML = '<option value="">-- All Chapters --</option>';
-                        chapterSelect.disabled = false;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading books:', error);
-                    bookSelect.innerHTML = '<option value="">-- Error Loading Books --</option>';
-                });
-        }
-
-        // Load chapters when book, language, or edition changes
-        function loadChapters() {
-            const bookNumber = bookSelect.value;
-            const language = languageSelect.value;
-            const edition = editionSelect.value;
-            const currentChapter = chapterSelect.value; // Remember current selection
-
-            // Only load chapters if a book is selected
-            if (!bookNumber) {
-                chapterSelect.innerHTML = '<option value="">-- All Chapters --</option>';
-                chapterSelect.disabled = false;
-                chapterLoading.classList.add('d-none');
-                return;
-            }
-
-            // Show loading
-            chapterLoading.classList.remove('d-none');
-            chapterSelect.innerHTML = '<option value="">-- Loading... --</option>';
-            chapterSelect.disabled = true;
-
-            let url = `/Bibles/GetAvailableChapters?bookNumber=${encodeURIComponent(bookNumber)}`;
-            if (language) url += `&language=${encodeURIComponent(language)}`;
-            if (edition) url += `&edition=${encodeURIComponent(edition)}`;
-
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    chapterLoading.classList.add('d-none');
-
-                    if (data.success && data.chapters && data.chapters.length > 0) {
-                        chapterSelect.innerHTML = '<option value="">-- All Chapters --</option>';
-                        data.chapters.forEach(chapter => {
-                            const option = document.createElement('option');
-                            option.value = chapter;
-                            option.textContent = `Chapter ${chapter}`;
-                            // Restore the previously selected chapter if it exists in the new list
-                            if (chapter.toString() === currentChapter) {
-                                option.selected = true;
-                            }
-                            chapterSelect.appendChild(option);
-                        });
-                        chapterSelect.disabled = false;
-                    } else {
-                        chapterSelect.innerHTML = '<option value="">-- No Chapters Available --</option>';
-                        chapterSelect.disabled = true;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading chapters:', error);
-                    chapterLoading.classList.add('d-none');
-                    chapterSelect.innerHTML = '<option value="">-- Error Loading Chapters --</option>';
-                    chapterSelect.disabled = true;
-                });
-        }
-
-        // Load editions when language changes
-        function loadEditions() {
-            const language = languageSelect.value;
-            const currentEdition = editionSelect.value; // Remember current selection
-
-            // Show all editions if no language is selected
-            if (!language) {
-                editionLoading.classList.remove('d-none');
-                fetch('/Bibles/GetAvailableEditions')
-                    .then(response => response.json())
-                    .then(data => {
-                        editionLoading.classList.add('d-none');
-                        if (data.success && data.editions && data.editions.length > 0) {
-                            editionSelect.innerHTML = '<option value="">-- All Editions --</option>';
-                            data.editions.forEach(edition => {
-                                const option = document.createElement('option');
-                                option.value = edition;
-                                option.textContent = edition;
-                                if (edition === currentEdition) {
-                                    option.selected = true;
-                                }
-                                editionSelect.appendChild(option);
-                            });
-                            editionSelect.disabled = false;
-
-                            // After edition list is updated, update books list
-                            loadBooks();
-                        } else {
-                            editionSelect.innerHTML = '<option value="">-- No Editions Available --</option>';
-                            editionSelect.disabled = true;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error loading editions:', error);
-                        editionLoading.classList.add('d-none');
-                        editionSelect.innerHTML = '<option value="">-- Error Loading Editions --</option>';
-                        editionSelect.disabled = true;
-                    });
-                return;
-            }
-
-            // Show loading
-            editionLoading.classList.remove('d-none');
-            editionSelect.innerHTML = '<option value="">-- Loading... --</option>';
-            editionSelect.disabled = true;
-
-            const url = `/Bibles/GetAvailableEditions?language=${encodeURIComponent(language)}`;
-
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    editionLoading.classList.add('d-none');
-
-                    if (data.success && data.editions && data.editions.length > 0) {
-                        editionSelect.innerHTML = '<option value="">-- All Editions --</option>';
-                        data.editions.forEach(edition => {
-                            const option = document.createElement('option');
-                            option.value = edition;
-                            option.textContent = edition;
-                            // Restore the previously selected edition if it exists in the new list
-                            if (edition === currentEdition) {
-                                option.selected = true;
-                            }
-                            editionSelect.appendChild(option);
-                        });
-                        editionSelect.disabled = false;
-
-                        // After edition list is updated, update books list
-                        loadBooks();
-                    } else {
-                        editionSelect.innerHTML = '<option value="">-- No Editions Available --</option>';
-                        editionSelect.disabled = true;
-
-                        // Still update books list
-                        loadBooks();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading editions:', error);
-                    editionLoading.classList.add('d-none');
-                    editionSelect.innerHTML = '<option value="">-- Error Loading Editions --</option>';
-                    editionSelect.disabled = true;
-                });
-        }
-
-        // Event listeners
-        bookSelect.addEventListener('change', loadChapters);
-
-        languageSelect.addEventListener('change', function() {
-            // Language changes affect editions, which affect books, which affect chapters
-            loadEditions();
+    // Book search functionality
+    bookSearch.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        // Save current selection
+        const currentValue = bookSelect.value;
+        
+        // Clear current options (except first)
+        bookSelect.innerHTML = '<option value="">-- All Books --</option>';
+        
+        // Filter and add matching options
+        const filteredOptions = bookOptions.slice(1).filter(option => 
+            option.dataset.search && option.dataset.search.includes(searchTerm)
+        );
+        
+        filteredOptions.forEach(option => {
+            bookSelect.appendChild(option.cloneNode(true));
         });
-
-        editionSelect.addEventListener('change', function() {
-            // Edition changes affect books, which affect chapters
-            loadBooks();
-        });
-
-        // Add tooltip to truncated text
-        const truncatedElements = document.querySelectorAll('[title]');
-        truncatedElements.forEach(element => {
-            if (element.textContent.includes('...')) {
-                element.style.cursor = 'help';
-            }
-        });
-
-        // Initialize filters on page load if any are pre-selected
-        if (languageSelect.value) {
-            // If language is selected, start the cascade from there
-            loadEditions();
-        } else if (editionSelect.value) {
-            // If only edition is selected, load books based on it
-            loadBooks();
-        } else if (bookSelect.value) {
-            // If only book is selected, just load chapters
-            loadChapters();
+        
+        // Restore selection if it still exists
+        if (currentValue && bookSelect.querySelector(`option[value="${currentValue}"]`)) {
+            bookSelect.value = currentValue;
+        }
+        
+        // Auto-select if only one match and search term is not empty
+        if (searchTerm && filteredOptions.length === 1) {
+            bookSelect.value = filteredOptions[0].value;
+            bookSelect.dispatchEvent(new Event('change'));
         }
     });
+
+    // Load available languages based on selected book
+    function loadLanguages() {
+        const bookNumber = bookSelect.value;
+        
+        // Remember current selection before updating
+        currentBookValue = bookNumber;
+        
+        // If no book is selected, show all languages and reset dependent fields
+        if (!bookNumber) {
+            // Restore all original language options
+            languageSelect.innerHTML = '';
+            languageOptions.forEach(option => {
+                languageSelect.appendChild(option.cloneNode(true));
+            });
+            
+            // Reset dependent fields
+            resetEditions();
+            resetChapters();
+            resetVerses();
+            return;
+        }
+        
+        // Show loading
+        languageLoading?.classList.remove('d-none');
+        languageSelect.disabled = true;
+        
+        // Get available languages for the selected book
+        const url = `/Bibles/GetAvailableLanguages?bookNumber=${encodeURIComponent(bookNumber)}`;
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                languageLoading?.classList.add('d-none');
+                languageSelect.disabled = false;
+                
+                if (data.success && data.languages && data.languages.length > 0) {
+                    // Update languages dropdown
+                    languageSelect.innerHTML = '<option value="">-- All Languages --</option>';
+                    
+                    data.languages.forEach(lang => {
+                        const option = document.createElement('option');
+                        option.value = lang.value;
+                        option.textContent = lang.text;
+                        
+                        // Restore selection if it exists in new options
+                        if (lang.value === currentLanguageValue) {
+                            option.selected = true;
+                        }
+                        
+                        languageSelect.appendChild(option);
+                    });
+                    
+                    // Auto-select if only one option and none selected
+                    if (data.languages.length === 1 && !currentLanguageValue) {
+                        languageSelect.value = data.languages[0].value;
+                        languageSelect.dispatchEvent(new Event('change'));
+                    } else if (currentLanguageValue && languageSelect.value !== currentLanguageValue) {
+                        // If previous selection is no longer valid, reset dependent dropdowns
+                        resetEditions();
+                        resetChapters();
+                        resetVerses();
+                    } else if (languageSelect.value) {
+                        // If we have a valid language selection, load editions
+                        loadEditions();
+                    }
+                } else {
+                    languageSelect.innerHTML = '<option value="">-- No Languages Available --</option>';
+                    resetEditions();
+                    resetChapters();
+                    resetVerses();
+                }
+            })
+            .catch(error => {
+                console.error('Error loading languages:', error);
+                languageLoading?.classList.add('d-none');
+                languageSelect.disabled = false;
+                languageSelect.innerHTML = '<option value="">-- Error Loading Languages --</option>';
+                resetEditions();
+                resetChapters();
+                resetVerses();
+            });
+    }
+
+    // Load editions when book and language are selected
+    function loadEditions() {
+        const bookNumber = bookSelect.value;
+        const language = languageSelect.value;
+        
+        // Remember current selection
+        currentLanguageValue = language;
+        
+        if (!bookNumber || !language) {
+            resetEditions();
+            resetChapters();
+            resetVerses();
+            return;
+        }
+        
+        // Show loading
+        editionLoading.classList.remove('d-none');
+        editionSelect.disabled = true;
+        editionSelect.innerHTML = '<option value="">-- Loading... --</option>';
+        
+        const url = `/Bibles/GetAvailableEditions?bookNumber=${encodeURIComponent(bookNumber)}&language=${encodeURIComponent(language)}`;
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                editionLoading.classList.add('d-none');
+                editionSelect.disabled = false;
+                
+                if (data.success && data.editions && data.editions.length > 0) {
+                    editionSelect.innerHTML = '<option value="">-- All Editions --</option>';
+                    
+                    data.editions.forEach(edition => {
+                        const option = document.createElement('option');
+                        option.value = edition;
+                        option.textContent = edition;
+                        
+                        // Restore previously selected edition if available
+                        if (edition === currentEditionValue) {
+                            option.selected = true;
+                        }
+                        
+                        editionSelect.appendChild(option);
+                    });
+                    
+                    // Auto-select if only one edition available
+                    if (data.editions.length === 1 && !currentEditionValue) {
+                        editionSelect.value = data.editions[0];
+                        editionSelect.dispatchEvent(new Event('change'));
+                    } else if (currentEditionValue && editionSelect.value !== currentEditionValue) {
+                        // If previous selection is no longer valid
+                        resetChapters();
+                        resetVerses();
+                    } else if (editionSelect.value) {
+                        // If we have a valid edition selection, load chapters
+                        loadChapters();
+                    }
+                } else {
+                    editionSelect.innerHTML = '<option value="">-- No Editions Available --</option>';
+                    resetChapters();
+                    resetVerses();
+                }
+            })
+            .catch(error => {
+                console.error('Error loading editions:', error);
+                editionLoading.classList.add('d-none');
+                editionSelect.disabled = false;
+                editionSelect.innerHTML = '<option value="">-- Error Loading Editions --</option>';
+                resetChapters();
+                resetVerses();
+            });
+    }
+
+    // Load chapters when book, language, and edition are selected
+    function loadChapters() {
+        const bookNumber = bookSelect.value;
+        const language = languageSelect.value;
+        const edition = editionSelect.value;
+        
+        // Remember current selection
+        currentEditionValue = edition;
+        
+        if (!bookNumber || !language || !edition) {
+            resetChapters();
+            resetVerses();
+            return;
+        }
+        
+        // Show loading
+        chapterLoading.classList.remove('d-none');
+        chapterSelect.disabled = true;
+        chapterSelect.innerHTML = '<option value="">-- Loading... --</option>';
+        
+        const url = `/Bibles/GetAvailableChapters?bookNumber=${encodeURIComponent(bookNumber)}&language=${encodeURIComponent(language)}&edition=${encodeURIComponent(edition)}`;
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                chapterLoading.classList.add('d-none');
+                chapterSelect.disabled = false;
+                
+                if (data.success && data.chapters && data.chapters.length > 0) {
+                    chapterSelect.innerHTML = '<option value="">-- All Chapters --</option>';
+                    
+                    data.chapters.forEach(chapter => {
+                        const option = document.createElement('option');
+                        option.value = chapter;
+                        option.textContent = `Chapter ${chapter}`;
+                        
+                        // Restore previously selected chapter if available
+                        if (chapter.toString() === currentChapterValue) {
+                            option.selected = true;
+                        }
+                        
+                        chapterSelect.appendChild(option);
+                    });
+                    
+                    // Auto-select if only one chapter available
+                    if (data.chapters.length === 1 && !currentChapterValue) {
+                        chapterSelect.value = data.chapters[0].toString();
+                        chapterSelect.dispatchEvent(new Event('change'));
+                    } else if (currentChapterValue && chapterSelect.value !== currentChapterValue) {
+                        // If previous selection is no longer valid
+                        resetVerses();
+                    } else if (chapterSelect.value) {
+                        // If we have a valid chapter selection, load verses
+                        loadVerses();
+                    }
+                } else {
+                    chapterSelect.innerHTML = '<option value="">-- No Chapters Available --</option>';
+                    resetVerses();
+                }
+            })
+            .catch(error => {
+                console.error('Error loading chapters:', error);
+                chapterLoading.classList.add('d-none');
+                chapterSelect.disabled = false;
+                chapterSelect.innerHTML = '<option value="">-- Error Loading Chapters --</option>';
+                resetVerses();
+            });
+    }
+
+    // Load verses when book, language, edition, and chapter are selected
+    function loadVerses() {
+        const bookNumber = bookSelect.value;
+        const language = languageSelect.value;
+        const edition = editionSelect.value;
+        const chapter = chapterSelect.value;
+        
+        // Remember current selection
+        currentChapterValue = chapter;
+        
+        if (!bookNumber || !language || !edition || !chapter || !verseSelect) {
+            resetVerses();
+            return;
+        }
+        
+        // Show loading
+        verseLoading.classList.remove('d-none');
+        verseSelect.disabled = true;
+        verseSelect.innerHTML = '<option value="">-- Loading... --</option>';
+        
+        const url = `/Bibles/GetAvailableVerses?bookNumber=${encodeURIComponent(bookNumber)}&language=${encodeURIComponent(language)}&edition=${encodeURIComponent(edition)}&chapter=${encodeURIComponent(chapter)}`;
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                verseLoading.classList.add('d-none');
+                verseSelect.disabled = false;
+                
+                if (data.success && data.verses && data.verses.length > 0) {
+                    verseSelect.innerHTML = '<option value="">-- All Verses --</option>';
+                    
+                    data.verses.forEach(verse => {
+                        const option = document.createElement('option');
+                        option.value = verse;
+                        option.textContent = `Verse ${verse}`;
+                        
+                        // Restore previously selected verse if available
+                        if (verse.toString() === currentVerseValue) {
+                            option.selected = true;
+                        }
+                        
+                        verseSelect.appendChild(option);
+                    });
+                    
+                    // Auto-select if only one verse available
+                    if (data.verses.length === 1 && !currentVerseValue) {
+                        verseSelect.value = data.verses[0].toString();
+                    }
+                } else {
+                    verseSelect.innerHTML = '<option value="">-- No Verses Available --</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading verses:', error);
+                verseLoading.classList.add('d-none');
+                verseSelect.disabled = false;
+                verseSelect.innerHTML = '<option value="">-- Error Loading Verses --</option>';
+            });
+    }
+
+    // Reset functions
+    function resetEditions() {
+        editionSelect.innerHTML = '<option value="">-- All Editions --</option>';
+        editionSelect.disabled = !bookSelect.value || !languageSelect.value;
+        editionLoading.classList.add('d-none');
+        currentEditionValue = '';
+    }
+
+    function resetChapters() {
+        chapterSelect.innerHTML = '<option value="">-- All Chapters --</option>';
+        chapterSelect.disabled = !bookSelect.value || !languageSelect.value || !editionSelect.value;
+        chapterLoading.classList.add('d-none');
+        currentChapterValue = '';
+    }
+
+    function resetVerses() {
+        if (verseSelect) {
+            verseSelect.innerHTML = '<option value="">-- All Verses --</option>';
+            verseSelect.disabled = !bookSelect.value || !languageSelect.value || !editionSelect.value || !chapterSelect.value;
+            if (verseLoading) verseLoading.classList.add('d-none');
+            currentVerseValue = '';
+        }
+    }
+
+    // Event listeners for the proper cascade order
+    bookSelect.addEventListener('change', function() {
+        // Book selection affects all other dropdowns
+        loadLanguages();
+    });
+
+    languageSelect.addEventListener('change', function() {
+        // Language selection affects editions, chapters, and verses
+        loadEditions();
+    });
+
+    editionSelect.addEventListener('change', function() {
+        // Edition selection affects chapters and verses
+        loadChapters();
+    });
+
+    chapterSelect.addEventListener('change', function() {
+        // Chapter selection affects verses
+        loadVerses();
+    });
+
+    // Initialize on page load based on any pre-selected values
+    // Start cascade from the highest level that's selected
+    if (bookSelect.value) {
+        loadLanguages();
+    }
+
+    // Initialize tooltips for truncated text
+    const truncatedElements = document.querySelectorAll('[title]');
+    truncatedElements.forEach(element => {
+        if (element.textContent.includes('...')) {
+            element.style.cursor = 'help';
+        }
+    });
+
+    // Form submission handler to maintain selected values
+    document.querySelector('form').addEventListener('submit', function(e) {
+        // Nothing needed here as the form will naturally submit all selected values
+        // Values are maintained by the controller and returned in ViewBag
+    });
+});
 </script>
