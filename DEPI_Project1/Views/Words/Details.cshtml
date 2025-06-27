@@ -70,7 +70,11 @@
                 <ul>
                     @foreach (var groupExplanation in Model.GroupWord.GroupExplanations)
                     {
-                        <li>@groupExplanation.Explanation (@groupExplanation.Language)</li>
+                        <!-- Replace the current list items in Group Explanations section with this: -->
+                        <li>
+                            <div class="bidi-text" dir="auto">@Html.Raw(groupExplanation.Explanation)</div> 
+                            <small class="text-muted">(@groupExplanation.Language)</small>
+                        </li>
                     }
                 </ul>
 
@@ -291,9 +295,13 @@
         @foreach (var explanation in Model.WordExplanations)
         {
             <tr>
-                <td>@explanation.Explanation</td>
-                <td>@explanation.Language</td>
-                <td>@explanation.Notes</td>
+                 <td>
+            <div class="bidi-text" dir="auto">@Html.Raw(explanation.Explanation)</div>
+        </td>
+        <td>@explanation.Language</td>
+        <td>
+            <div class="bidi-text" dir="auto">@Html.Raw(explanation.Notes)</div>
+        </td>
                 <!-- Example of button changes in Word Explanations section -->
                 <td>
                     <div class="btn-group">
@@ -822,7 +830,21 @@ else
 </div>
 
 
+<!-- Add this style section at the bottom of the file if it doesn't exist, or add the content to the existing style section -->
+<style>
+    /* Bidirectional text handling */
+.bidi-text {
+    unicode-bidi: embed;
+    text-align: start;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
 
+/* Arabic text styling */
+[dir="rtl"] .bidi-text {
+    font-family: "Arial", sans-serif;
+}
+</style>
 
 <!-- ... rest of the existing code ... -->
 @section Scripts {

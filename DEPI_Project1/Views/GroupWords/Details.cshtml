@@ -424,8 +424,12 @@
                         {
                             <tr>
                                 <td>@explanation.Language</td>
-                                <td>@explanation.Explanation</td>
-                                <td>@explanation.Notes</td>
+                                <td>
+                                    <div class="bidi-text" dir="auto">@Html.Raw(explanation.Explanation)</div>
+                                </td>
+                                <td>
+                                    <div class="bidi-text" dir="auto">@Html.Raw(explanation.Notes)</div>
+                                </td>
                                 <td>
                                     <div class="btn-group">
                                         <a asp-action="EditGroupExplanation" asp-route-id="@explanation.ID"
@@ -547,6 +551,26 @@
     </div>
 </div>
 
+<!-- Add this style section at the bottom of the file if it doesn't exist, or add the content to the existing style section -->
+<style>
+    .bidi-text {
+        unicode-bidi: embed;
+        text-align: start;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    
+    /* Add additional formatting specific to your needs */
+    [dir="rtl"] .bidi-text {
+        font-family: "Arial", sans-serif;
+    }
+    
+    /* Ensure proper padding for both RTL and LTR content */
+    .table td .bidi-text {
+        padding: 0.5rem;
+        margin: -0.5rem;
+    }
+</style>
 @section Scripts {
     <script>
         function deleteGroup(groupId) {
