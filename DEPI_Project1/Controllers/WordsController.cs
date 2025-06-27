@@ -2906,7 +2906,7 @@ public IActionResult CreateBibleReference(int wordMeaningId)
         private List<BibleBookInfo> GetBibleBooksList()
         {
             return new List<BibleBookInfo>
-    {
+  {
         new BibleBookInfo { BookNumber = 1, EN = "Gen", AR = "تك", CB = "ⲅⲉⲛ", CS = "ⲅⲉⲛ", ARFull = "تكوين" },
         new BibleBookInfo { BookNumber = 2, EN = "Exo", AR = "خر", CB = "ⲉⲝ", CS = "ⲉⲝ", ARFull = "خروج" },
         new BibleBookInfo { BookNumber = 3, EN = "Lev", AR = "لا", CB = "ⲗⲉⲩ", CS = "ⲗⲉⲩ", ARFull = "لاويين" },
@@ -2955,7 +2955,7 @@ public IActionResult CreateBibleReference(int wordMeaningId)
         new BibleBookInfo { BookNumber = 46, EN = "1Macc", AR = "1مك", CB = "ⲁ̅ ⲙⲁⲕ", CS = "ⲁ̅ ⲙⲁⲕ", ARFull = "مكابيين أول" },
         new BibleBookInfo { BookNumber = 47, EN = "2Macc", AR = "2مك", CB = "ⲃ̅ ⲙⲁⲕ", CS = "ⲃ̅ ⲙⲁⲕ", ARFull = "مكابيين ثاني" },
         new BibleBookInfo { BookNumber = 48, EN = "Mat", AR = "مت", CB = "ⲘⲀⲦ", CS = "ⲘⲀⲦ", ARFull = "متى" },
-        new BibleBookInfo { BookNumber = 49, EN = "Mar", AR = "مرا", CB = "ⳘⲀⲢ", CS = "ⳘⲀⲢ", ARFull = "مرقس" },
+        new BibleBookInfo { BookNumber = 49, EN = "Mar", AR = "مر", CB = "ⳘⲀⲢ", CS = "ⳘⲀⲢ", ARFull = "مرقس" },
         new BibleBookInfo { BookNumber = 50, EN = "Luk", AR = "لو", CB = "ⲖⲞⲨ", CS = "ⲖⲞⲨ", ARFull = "لوقا" },
         new BibleBookInfo { BookNumber = 51, EN = "Joh", AR = "يو", CB = "ⲒⲰⲀ", CS = "ⲒⲰⲀ", ARFull = "يوحنا" },
         new BibleBookInfo { BookNumber = 52, EN = "Act", AR = "اع", CB = "ⲠⲢⲀ", CS = "ⲠⲢⲀ", ARFull = "أعمال الرسل" },
