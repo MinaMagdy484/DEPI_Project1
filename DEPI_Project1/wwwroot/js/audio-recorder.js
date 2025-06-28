@@ -216,10 +216,81 @@ function updatePronunciationDisplay(pronunciationUrl) {
     }
 }
 
+// Audio recording utility functions
+// This file contains shared functionality for recording audio across different views
+
+/**
+ * Initializes the audio recorder by requesting microphone access
+ */
+function initAudioRecorder() {
+    return navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            const recorder = new MediaRecorder(stream);
+            const chunks = [];
+            
+            recorder.ondataavailable = e => chunks.push(e.data);
+            
+            return {
+                recorder: recorder,
+                chunks: chunks,
+                start: () => {
+                    chunks.length = 0; // Clear any previous data
+                    recorder.start();
+                },
+                stop: () => {
+                    return new Promise(resolve => {
+                        recorder.onstop = () => {
+                            const blob = new Blob(chunks, { type: 'audio/webm' });
+                            const url = URL.createObjectURL(blob);
+                            resolve({ blob, url });
+                        };
+                        recorder.stop();
+                    });
+                }
+            };
+        });
+}
+
+/**
+ * Formats time in seconds to a MM:SS display
+ * @param {number} seconds - The time in seconds
+ * @returns {string} - Formatted time string
+ */
+function formatTime(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+}
+
+/**
+ * Extracts a file ID from a Google Drive URL
+ * @param {string} url - Google Drive URL
+ * @returns {string} - File ID or empty string
+ */
+function extractGoogleDriveFileId(url) {
+    if (!url) return '';
+    
+    let fileId = '';
+    if (url.includes('/file/d/')) {
+        const match = url.match(/\/file\/d\/([a-zA-Z0-9-_]+)/);
+        fileId = match ? match[1] : '';
+    } else if (url.includes('id=')) {
+        const match = url.match(/id=([a-zA-Z0-9-_]+)/);
+        fileId = match ? match[1] : '';
+    }
+    
+    return fileId;
+}
+
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
     // Auto-initialize if on word details page
     if (document.getElementById('word-id')) {
         initializeRecorder();
     }
-});
+}
+
+
+
+
+);

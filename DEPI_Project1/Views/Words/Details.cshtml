@@ -572,35 +572,31 @@ else
                                             <td>@example.Notes</td>
                                             <td>@example.Language</td>
                                             <td>
-                                                <div class="btn-group">
-                                                    <a asp-action="CreateChildExample"
-                                                       asp-route-parentExampleId="@example.ID"
-                                                       asp-route-wordId="@Model.WordId"
-                                                       class="btn btn-primary btn-sm">Add Translation</a>
-                                                    @* <a asp-action="EditExample" 
-                                                       asp-route-id="@example.ID" 
-                                                       class="btn btn-primary btn-sm">Edit</a>
-                                                    <form asp-action="DeleteExample" method="post" style="display:inline;">
-                                                        <input type="hidden" name="id" value="@example.ID" />
-                                                        <button type="submit" 
-                                                                class="btn btn-danger btn-sm" 
-                                                                onclick="return confirm('Are you sure?');">Delete</button>
-                                                    </form> *@
-                                                    <div class="btn-group">
-                                                        <a asp-action="EditExample" asp-route-id="@example.ID"
-                                                           class="btn btn-outline-primary btn-sm" title="Edit">
-                                                            <i class="bi bi-pencil-square"></i>
-                                                        </a>
-                                                        <form asp-action="DeleteExample" method="post" style="display:inline;">
-                                                            <input type="hidden" name="id" value="@example.ID" />
-                                                            <button type="submit" class="btn btn-outline-danger btn-sm"
-                                                                    onclick="return confirm('Are you sure?');" title="Delete">
-                                                                <i class="bi bi-trash"></i>
-                                                            </button>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </td>
+    <div class="btn-group">
+        <a asp-action="ExampleDetails" asp-route-id="@example.ID"
+           class="btn btn-info btn-sm" title="View Details">
+            <i class="bi bi-eye"></i> Details
+        </a>
+        <a asp-action="CreateChildExample"
+           asp-route-parentExampleId="@example.ID"
+           asp-route-wordId="@Model.WordId"
+           class="btn btn-primary btn-sm">Add Translation</a>
+        <div class="btn-group">
+            <a asp-action="EditExample" asp-route-id="@example.ID"
+               class="btn btn-outline-primary btn-sm" title="Edit">
+                <i class="bi bi-pencil-square"></i>
+            </a>
+            <form asp-action="DeleteExample" method="post" style="display:inline;">
+                <input type="hidden" name="id" value="@example.ID" />
+                <button type="submit" class="btn btn-outline-danger btn-sm"
+                        onclick="return confirm('Are you sure?');" title="Delete">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+</td>
+
                                         </tr>
                                         <!-- Child examples -->
                                         @if (example.ChildExamples != null)
@@ -614,18 +610,22 @@ else
                                                     <td>@childExample.Notes</td>
                                                     <td>@childExample.Language</td>
                                                     <td>
-                                                        <div class="btn-group">
-                                                            <a asp-action="EditChildExample" 
-                                                               asp-route-id="@childExample.ID" 
-                                                               class="btn btn-primary btn-sm">Edit</a>
-                                                            <form asp-action="DeleteExample" method="post" style="display:inline;">
-                                                                <input type="hidden" name="id" value="@childExample.ID" />
-                                                                <button type="submit" 
-                                                                        class="btn btn-danger btn-sm" 
-                                                                        onclick="return confirm('Are you sure?');">Delete</button>
-                                                            </form>
-                                                        </div>
-                                                    </td>
+    <div class="btn-group">
+        <a asp-action="ExampleDetails" asp-route-id="@childExample.ID"
+           class="btn btn-info btn-sm" title="View Details">
+            <i class="bi bi-eye"></i> Details
+        </a>
+        <a asp-action="EditChildExample" 
+           asp-route-id="@childExample.ID" 
+           class="btn btn-primary btn-sm">Edit</a>
+        <form asp-action="DeleteExample" method="post" style="display:inline;">
+            <input type="hidden" name="id" value="@childExample.ID" />
+            <button type="submit" 
+                    class="btn btn-danger btn-sm" 
+                    onclick="return confirm('Are you sure?');">Delete</button>
+        </form>
+    </div>
+</td>
                                                 </tr>
                                             }
                                         }

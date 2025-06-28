@@ -2571,6 +2571,153 @@ public IActionResult CreateBibleReference(int wordMeaningId)
             }
         }
 
+
+       // GET: Words/ExampleDetails/5
+public async Task<IActionResult> ExampleDetails(int? id)
+{
+    if (id == null)
+    {
+        return NotFound();
+    }
+
+    var example = await _context.Examples
+        .Include(e => e.WordMeaning)
+            .ThenInclude(wm => wm.Word)
+        .Include(e => e.WordMeaning)
+            .ThenInclude(wm => wm.Meaning)
+        .Include(e => e.ParentExample)
+        .Include(e => e.ChildExamples)
+        .FirstOrDefaultAsync(e => e.ID == id);
+
+    if (example == null)
+    {
+        return NotFound();
+    }
+
+    return View(example);
+}
+
+// POST: Words/DeleteExamplePronunciation
+[HttpPost]
+public async Task<IActionResult> DeleteExamplePronunciation(int exampleId)
+{
+    try
+    {
+        var example = await _context.Examples.FindAsync(exampleId);
+        if (example == null)
+        {
+            return Json(new { success = false, message = "Example not found" });
+        }
+
+        if (!string.IsNullOrEmpty(example.Pronunciation))
+        {
+            // Extract file ID from Google Drive URL
+            var fileId = ExtractFileIdFromUrl(example.Pronunciation);
+            if (!string.IsNullOrEmpty(fileId))
+            {
+                await _googleDriveService.DeleteFileAsync(fileId);
+            }
+
+            example.Pronunciation = null;
+            await _context.SaveChangesAsync();
+        }
+
+        return Json(new { success = true });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error deleting pronunciation for example {ExampleId}", exampleId);
+        return Json(new { success = false, message = "Error deleting pronunciation" });
+    }
+}
+
+        [HttpPost]
+        public async Task<IActionResult> UploadExampleAudio(IFormFile audioFile, int exampleId)
+        {
+            try
+            {
+                _logger.LogInformation("Upload example audio file request for example {ExampleId}", exampleId);
+
+                if (audioFile == null || audioFile.Length == 0)
+                {
+                    _logger.LogWarning("No audio file provided for example {ExampleId}", exampleId);
+                    return Json(new { success = false, message = "No audio file provided" });
+                }
+
+                var example = await _context.Examples.FindAsync(exampleId);
+                if (example == null)
+                {
+                    _logger.LogWarning("Example not found: {ExampleId}", exampleId);
+                    return Json(new { success = false, message = "Example not found" });
+                }
+
+                // Check file size (limit to 10MB)
+                if (audioFile.Length > 10 * 1024 * 1024)
+                {
+                    return Json(new { success = false, message = "File too large. Maximum size is 10MB." });
+                }
+
+                // Generate unique filename with WAV extension
+                var fileName = $"example_audio_{exampleId}_{DateTime.UtcNow:yyyyMMddHHmmss}.wav";
+
+                _logger.LogInformation("Uploading WAV file {FileName} for example {ExampleId}", fileName, exampleId);
+
+                // Upload to Google Drive
+                using (var stream = audioFile.OpenReadStream())
+                {
+                    var fileId = await _googleDriveService.UploadAudioFileAsync(stream, fileName);
+                    var publicLink = await _googleDriveService.GetPublicLinkAsync(fileId);
+
+                    // Update example with pronunciation link
+                    example.Pronunciation = publicLink;
+                    await _context.SaveChangesAsync();
+
+                    _logger.LogInformation("Pronunciation saved successfully for example {ExampleId}", exampleId);
+                    return Json(new { success = true, pronunciationUrl = publicLink });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading pronunciation for example {ExampleId}", exampleId);
+                return Json(new { success = false, message = $"Error uploading pronunciation: {ex.Message}" });
+            }
+        }
+
+
+        [HttpPost]
+public async Task<IActionResult> DeleteExampleAudio(int exampleId)
+{
+    try
+    {
+        var example = await _context.Examples.FindAsync(exampleId);
+        if (example == null)
+        {
+            return Json(new { success = false, message = "Example not found" });
+        }
+
+        if (!string.IsNullOrEmpty(example.Pronunciation))
+        {
+            // Extract file ID from Google Drive URL
+            var fileId = ExtractFileIdFromUrl(example.Pronunciation);
+            if (!string.IsNullOrEmpty(fileId))
+            {
+                await _googleDriveService.DeleteFileAsync(fileId);
+            }
+
+            // Update the example to remove the pronunciation URL
+            example.Pronunciation = null;
+            await _context.SaveChangesAsync();
+        }
+
+        return Json(new { success = true });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error deleting example audio for example {ExampleId}", exampleId);
+        return Json(new { success = false, message = "Error deleting audio" });
+    }
+}
+
         private string ExtractFileIdFromUrl(string googleDriveUrl)
         {
             if (string.IsNullOrEmpty(googleDriveUrl))
