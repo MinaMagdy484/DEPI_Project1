@@ -62,9 +62,9 @@
                    class="btn btn-info btn-sm">
                     <i class="bi bi-plus-circle"></i> Add New Definition
                 </a>    <a asp-action="SelectExistingDefinitionForGroup" asp-route-groupId="@Model.ID"
-                           class="btn btn-warning btn-sm">
-                    <i class="bi bi-search"></i> Add Existing Definition
-                </a>
+   class="btn btn-warning btn-sm">
+    <i class="bi bi-search"></i> Add Existing Definition
+</a>
             </div>
         </div>
         <div class="card-body">
@@ -77,7 +77,23 @@
                                 <th>Language</th>
                                 @foreach (var wordClass in ViewBag.UniqueClasses)
                                 {
-                                    <th>@wordClass</th>
+                                    <th>
+                                        @wordClass
+                                        <div class="btn-group mt-1" role="group">
+                                            <a asp-action="AddDefinitionToWordsByClass"
+                                               asp-route-groupId="@Model.ID"
+                                               asp-route-wordClass="@wordClass"
+                                               class="btn btn-success btn-sm">
+                                                <i class="bi bi-plus-circle"></i> Add New
+                                            </a>
+                                            <a asp-action="SelectExistingDefinitionForWordsByClass"
+                                               asp-route-groupId="@Model.ID"
+                                               asp-route-wordClass="@wordClass"
+                                               class="btn btn-warning btn-sm">
+                                                <i class="bi bi-search"></i> Add Existing
+                                            </a>
+                                        </div>
+                                    </th>
                                 }
                             </tr>
                         </thead>

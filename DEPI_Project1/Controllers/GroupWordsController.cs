@@ -1359,70 +1359,7 @@ ViewData["Languages"] = new SelectList(
             return Json(roots);
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddExistingDefinitionToGroup(int meaningId, int groupId)
-        {
-            var meaning = await _context.Meanings.FindAsync(meaningId);
-            if (meaning == null)
-            {
-                TempData["Error"] = "Definition not found.";
-                return RedirectToAction("Details", new { id = groupId });
-            }
-
-            // Get all words in the group
-            var wordsInGroup = await _context.Words
-                .Where(w => w.GroupID == groupId)
-                .ToListAsync();
-
-            if (!wordsInGroup.Any())
-            {
-                TempData["Error"] = "No words found in this group.";
-                return RedirectToAction("Details", new { id = groupId });
-            }
-
-            try
-            {
-                // Create WordMeaning relationships for all words in the group that don't already have this meaning
-                var existingWordMeanings = await _context.WordMeanings
-                    .Where(wm => wm.MeaningID == meaningId && wordsInGroup.Select(w => w.WordId).Contains(wm.WordID))
-                    .Select(wm => wm.WordID)
-                    .ToListAsync();
-
-                var newWordMeanings = new List<WordMeaning>();
-                foreach (var word in wordsInGroup)
-                {
-                    // Only add if this word doesn't already have this meaning
-                    if (!existingWordMeanings.Contains(word.WordId))
-                    {
-                        newWordMeanings.Add(new WordMeaning
-                        {
-                            WordID = word.WordId,
-                            MeaningID = meaningId
-                        });
-                    }
-                }
-
-                if (newWordMeanings.Any())
-                {
-                    _context.WordMeanings.AddRange(newWordMeanings);
-                    await _context.SaveChangesAsync();
-
-                    TempData["Message"] = $"Definition '{meaning.MeaningText.Substring(0, Math.Min(50, meaning.MeaningText.Length))}...' has been successfully added to {newWordMeanings.Count} words in the group.";
-                }
-                else
-                {
-                    TempData["Warning"] = "All words in this group already have this definition.";
-                }
-
-                return RedirectToAction("Details", new { id = groupId });
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"An error occurred while adding the definition: {ex.Message}";
-                return RedirectToAction("Details", new { id = groupId });
-            }
-        }
+        
 
         // GET: GroupWords/CreateGroupExplanation
         public async Task<IActionResult> CreateGroupExplanation(int groupId)
@@ -1536,6 +1473,369 @@ ViewData["Languages"] = new SelectList(
         {
             return _context.GroupExplanations.Any(e => e.ID == id);
         }
+
+
+        // ...existing code...
+
+public async Task<IActionResult> SelectExistingDefinitionForGroup(int groupId, string? search, string? definitionSearchType = "contain", string? wordSearchType = "contain")
+{
+    var group = await _context.Groups.FindAsync(groupId);
+    ViewBag.GroupId = groupId;
+    ViewBag.GroupName = group?.Name ?? "Unknown Group";
+    ViewBag.SearchText = search;
+    ViewBag.DefinitionSearchType = definitionSearchType;
+    ViewBag.WordSearchType = wordSearchType;
+
+    if (string.IsNullOrEmpty(search))
+    {
+        return View(new List<Meaning>());
+    }
+
+    try
+    {
+        // Normalize the search string
+        search = NormalizeString(search);
+
+        // Get existing meaning IDs already associated with the words in this group
+        var wordsInGroup = await _context.Words
+            .Where(w => w.GroupID == groupId)
+            .Select(w => w.WordId)
+            .ToListAsync();
+
+        var existingMeaningIds = await _context.WordMeanings
+            .Where(wm => wordsInGroup.Contains(wm.WordID))
+            .Select(wm => wm.MeaningID)
+            .ToListAsync();
+
+        // Get all meanings with their associated words
+        var allMeaningsWithWords = await _context.Meanings
+            .Include(m => m.WordMeanings)
+            .ThenInclude(wm => wm.Word)
+            .ToListAsync();
+
+        // Filter meanings based on search criteria
+        var filteredMeanings = allMeaningsWithWords
+            .Where(m =>
+                // Search in definition text based on definitionSearchType
+                MatchDefinitionText(m.MeaningText, search, definitionSearchType) ||
+                // Search in words within the meaning based on wordSearchType
+                (m.WordMeanings != null && m.WordMeanings.Any(wm => 
+                    wm.Word != null && MatchWordText(wm.Word.Word_text, search, wordSearchType)))
+            )
+            .OrderBy(m => m.MeaningText)
+            .ToList();
+
+        // Mark meanings that are already associated with this group's words
+        foreach (var meaning in filteredMeanings)
+        {
+            if (existingMeaningIds.Contains(meaning.ID))
+            {
+                meaning.Notes = "Already linked to some words in this group";
+            }
+        }
+
+        return View(filteredMeanings);
+    }
+    catch (Exception ex)
+    {
+        TempData["Error"] = "An error occurred while searching for definitions.";
+        return View(new List<Meaning>());
+    }
+}
+
+private bool MatchDefinitionText(string definitionText, string search, string searchType)
+{
+    if (string.IsNullOrEmpty(definitionText)) return false;
+    
+    var normalizedDefinitionText = NormalizeString(definitionText);
+    
+    return searchType switch
+    {
+        "exact" => normalizedDefinitionText == search,
+        "start" => normalizedDefinitionText.StartsWith(search),
+        "end" => normalizedDefinitionText.EndsWith(search),
+        _ => normalizedDefinitionText.Contains(search)
+    };
+}
+
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> AddExistingDefinitionToGroup(int meaningId, int groupId)
+{
+    var meaning = await _context.Meanings.FindAsync(meaningId);
+    if (meaning == null)
+    {
+        TempData["Error"] = "Definition not found.";
+        return RedirectToAction("Details", new { id = groupId });
+    }
+
+    // Get all words in the group
+    var wordsInGroup = await _context.Words
+        .Where(w => w.GroupID == groupId)
+        .ToListAsync();
+
+    if (!wordsInGroup.Any())
+    {
+        TempData["Error"] = "No words found in this group.";
+        return RedirectToAction("Details", new { id = groupId });
+    }
+
+    // Get existing word-meaning associations to avoid duplicates
+    var existingWordMeanings = await _context.WordMeanings
+        .Where(wm => wm.MeaningID == meaningId && 
+               wordsInGroup.Select(w => w.WordId).Contains(wm.WordID))
+        .Select(wm => wm.WordID)
+        .ToListAsync();
+
+    // Add the meaning to words that don't already have it
+    var newWordMeanings = new List<WordMeaning>();
+    foreach (var word in wordsInGroup)
+    {
+        if (!existingWordMeanings.Contains(word.WordId))
+        {
+            newWordMeanings.Add(new WordMeaning
+            {
+                WordID = word.WordId,
+                MeaningID = meaningId
+            });
+        }
+    }
+
+    if (newWordMeanings.Any())
+    {
+        _context.WordMeanings.AddRange(newWordMeanings);
+        await _context.SaveChangesAsync();
+        TempData["Message"] = $"Definition has been added to {newWordMeanings.Count} words in the group.";
+    }
+    else
+    {
+        TempData["Warning"] = "This definition is already associated with all words in the group.";
+    }
+
+    return RedirectToAction("Details", new { id = groupId });
+}
+
+
+
+
+// Replace the AddDefinitionToWordsByClass methods with these corrected versions:
+
+public async Task<IActionResult> AddDefinitionToWordsByClass(int groupId, string wordClass)
+{
+    var group = await _context.Groups
+        .Include(g => g.Words)
+        .FirstOrDefaultAsync(g => g.ID == groupId);
+
+    if (group == null)
+    {
+        TempData["Error"] = "Group not found.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    // Get words in the group with the specific class
+    var targetWords = group.Words?.Where(w => w.Class == wordClass).ToList() ?? new List<Word>();
+
+    ViewBag.GroupId = groupId;
+    ViewBag.GroupName = group.Name;
+    ViewBag.WordClass = wordClass;
+    ViewBag.WordCount = targetWords.Count;
+    ViewBag.GroupWords = targetWords;
+    ViewBag.Languages = new SelectList(GetLanguagesList(), "Value", "Text");
+
+    return View();
+}
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> AddDefinitionToWordsByClass(int groupId, string wordClass, [Bind("MeaningText,Language,Notes")] Meaning meaning)
+{
+    if (ModelState.IsValid)
+    {
+        try
+        {
+            // Get words in the group with the specific class
+            var targetWords = await _context.Words
+                .Where(w => w.GroupID == groupId && w.Class == wordClass)
+                .ToListAsync();
+
+            if (!targetWords.Any())
+            {
+                TempData["Error"] = $"No words found in this group with class '{wordClass}'.";
+                return RedirectToAction("Details", new { id = groupId });
+            }
+
+            // Create the meaning
+            _context.Meanings.Add(meaning);
+            await _context.SaveChangesAsync();
+
+            // Create WordMeaning relationships for words with specific class
+            var wordMeanings = targetWords.Select(word => new WordMeaning
+            {
+                WordID = word.WordId,
+                MeaningID = meaning.ID
+            }).ToList();
+
+            _context.WordMeanings.AddRange(wordMeanings);
+            await _context.SaveChangesAsync();
+
+            TempData["Message"] = $"Definition has been successfully added to {targetWords.Count} words with class '{wordClass}' in the group.";
+            return RedirectToAction("Details", new { id = groupId });
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = "An error occurred while adding the definition.";
+        }
+    }
+
+    var group = await _context.Groups
+        .Include(g => g.Words)
+        .FirstOrDefaultAsync(g => g.ID == groupId);
+
+    var targetWordsForView = group?.Words?.Where(w => w.Class == wordClass).ToList() ?? new List<Word>();
+
+    ViewBag.GroupId = groupId;
+    ViewBag.GroupName = group?.Name ?? "Unknown Group";
+    ViewBag.WordClass = wordClass;
+    ViewBag.WordCount = targetWordsForView.Count;
+    ViewBag.GroupWords = targetWordsForView;
+    ViewBag.Languages = new SelectList(GetLanguagesList(), "Value", "Text", meaning.Language);
+
+    return View(meaning);
+}
+
+// GET: Select Existing Definition for Words by Class
+public async Task<IActionResult> SelectExistingDefinitionForWordsByClass(int groupId, string wordClass, string? search, string? definitionSearchType = "contain", string? wordSearchType = "contain")
+{
+    var group = await _context.Groups.FindAsync(groupId);
+    ViewBag.GroupId = groupId;
+    ViewBag.GroupName = group?.Name ?? "Unknown Group";
+    ViewBag.WordClass = wordClass;
+    ViewBag.SearchText = search;
+    ViewBag.DefinitionSearchType = definitionSearchType;
+    ViewBag.WordSearchType = wordSearchType;
+
+    // Get count of words with this class in the group
+    var wordsWithClassCount = await _context.Words
+        .CountAsync(w => w.GroupID == groupId && w.Class == wordClass);
+    ViewBag.WordsWithClassCount = wordsWithClassCount;
+
+    if (string.IsNullOrEmpty(search))
+    {
+        return View(new List<Meaning>());
+    }
+
+    try
+    {
+        // Normalize the search string
+        search = NormalizeString(search);
+
+        // Get existing meaning IDs already associated with words of this class in this group
+        var targetWordIds = await _context.Words
+            .Where(w => w.GroupID == groupId && w.Class == wordClass)
+            .Select(w => w.WordId)
+            .ToListAsync();
+
+        var existingMeaningIds = await _context.WordMeanings
+            .Where(wm => targetWordIds.Contains(wm.WordID))
+            .Select(wm => wm.MeaningID)
+            .ToListAsync();
+
+        // Get all meanings with their associated words
+        var allMeaningsWithWords = await _context.Meanings
+            .Include(m => m.WordMeanings)
+            .ThenInclude(wm => wm.Word)
+            .ToListAsync();
+
+        // Filter meanings based on search criteria
+        var filteredMeanings = allMeaningsWithWords
+            .Where(m =>
+                // Search in definition text based on definitionSearchType
+                MatchDefinitionText(m.MeaningText, search, definitionSearchType) ||
+                // Search in words within the meaning based on wordSearchType
+                (m.WordMeanings != null && m.WordMeanings.Any(wm => 
+                    wm.Word != null && MatchWordText(wm.Word.Word_text, search, wordSearchType)))
+            )
+            .OrderBy(m => m.MeaningText)
+            .ToList();
+
+        // Mark meanings that are already associated with words of this class in this group
+        foreach (var meaning in filteredMeanings)
+        {
+            if (existingMeaningIds.Contains(meaning.ID))
+            {
+                meaning.Notes = $"Already linked to some '{wordClass}' words in this group";
+            }
+        }
+
+        return View(filteredMeanings);
+    }
+    catch (Exception ex)
+    {
+        TempData["Error"] = "An error occurred while searching for definitions.";
+        return View(new List<Meaning>());
+    }
+}
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> AddExistingDefinitionToWordsByClass(int meaningId, int groupId, string wordClass)
+{
+    try
+    {
+        var meaning = await _context.Meanings.FindAsync(meaningId);
+        if (meaning == null)
+        {
+            TempData["Error"] = "Definition not found.";
+            return RedirectToAction("Details", new { id = groupId });
+        }
+
+        // Get words in the group with the specific class
+        var targetWords = await _context.Words
+            .Where(w => w.GroupID == groupId && w.Class == wordClass)
+            .ToListAsync();
+
+        if (!targetWords.Any())
+        {
+            TempData["Error"] = $"No words found in this group with class '{wordClass}'.";
+            return RedirectToAction("Details", new { id = groupId });
+        }
+
+        // Get existing word-meaning associations to avoid duplicates
+        var existingWordMeanings = await _context.WordMeanings
+            .Where(wm => wm.MeaningID == meaningId && 
+                   targetWords.Select(w => w.WordId).Contains(wm.WordID))
+            .Select(wm => wm.WordID)
+            .ToListAsync();
+
+        // Add the meaning to words that don't already have it
+        var newWordMeanings = targetWords
+            .Where(word => !existingWordMeanings.Contains(word.WordId))
+            .Select(word => new WordMeaning
+            {
+                WordID = word.WordId,
+                MeaningID = meaningId
+            })
+            .ToList();
+
+        if (newWordMeanings.Any())
+        {
+            _context.WordMeanings.AddRange(newWordMeanings);
+            await _context.SaveChangesAsync();
+            TempData["Message"] = $"Definition has been added to {newWordMeanings.Count} words with class '{wordClass}' in the group.";
+        }
+        else
+        {
+            TempData["Warning"] = $"This definition is already associated with all '{wordClass}' words in the group.";
+        }
+    }
+    catch (Exception ex)
+    {
+        TempData["Error"] = "An error occurred while adding the definition to the words.";
+    }
+
+    return RedirectToAction("Details", new { id = groupId });
+}
 
     }
 }
